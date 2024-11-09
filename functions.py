@@ -68,6 +68,8 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
         Returns:
             - ds_interp (xr.Dataset): The interpolated model data.
     """
+    model = ds.attrs["model"]
+
     # Define the depth range that will be interpolated to.
     # z_range = np.arange(ds["depth"].min(), max_depth + 1, 1)
     z_range = np.arange(0, max_depth + 1, 1)
@@ -76,7 +78,7 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     v = ds["v"]
     z = ds["depth"]
 
-    print("Interpolating depth...")
+    print(f"{model}: Interpolating depth...")
     starttime = print_starttime()
 
     # .compute() is necessary because it actually computes the interpolation with parallel processing.
@@ -84,6 +86,8 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     v_interp = v.interp(depth=z_range).compute()
 
     ds_interp = xr.Dataset({"u": u_interp, "v": v_interp})
+
+    ds_interp.attrs["model"] = model
 
     print("Done.")
     endtime = print_endtime()
@@ -107,6 +111,9 @@ def interpolate_coords(ds: xr.Dataset, ds_common: xr.Dataset) -> xr.Dataset:
     print("Interpolating coordinates...")
     starttime = print_starttime()
 
+    if "RTOFS" in ds.attrs["model"]:
+        print("ugh")
+
     ds_interp = ds.interp(lon=ds_common.lon, lat=ds_common.lat).compute()
 
     print("Done.")
@@ -127,12 +134,16 @@ def depth_average(ds: xr.Dataset) -> xr.Dataset:
     Returns:
         - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
     """
+    model = ds.attrs["model"]
+
     print("Depth averaging...")
     starttime = print_starttime()
 
     ds_da = ds.mean(dim="depth")
     magnitude = np.sqrt(ds_da["u"] ** 2 + ds_da["v"] ** 2)  # Pythagorean theorem
     ds_da = ds_da.assign(magnitude=magnitude)
+
+    ds_da.attrs["model"] = model
 
     print("Done.")
     endtime = print_endtime()

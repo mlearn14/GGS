@@ -1,13 +1,10 @@
-from tracemalloc import start
-from matplotlib.pyplot import grid
-from nbformat import convert
 import numpy as np
 import xarray as xr
 import copernicusmarine as cm
-from scipy.interpolate import interp1d, interp2d
-import os
 
-from functions import print_starttime, print_endtime, print_runtime
+from functions import *
+
+# TODO: for dubugging, check if dates given are within the datasets!
 
 
 class CMEMS:
@@ -37,9 +34,11 @@ class CMEMS:
         starttime = print_starttime()
         ds_id = "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i"  # dataset id for CMEMS current model
         ds = cm.open_dataset(dataset_id=ds_id, username=username, password=password)
-        ds = ds.rename(
-            {"longitude": "lon", "latitude": "lat", "uo": "u", "vo": "v"}
-        )  # rename variables for consistency across all datasets
+
+        # rename variables for consistency across all datasets
+        ds = ds.rename({"longitude": "lon", "latitude": "lat", "uo": "u", "vo": "v"})
+
+        ds.attrs["model"] = "CMEMS"
 
         self.raw_data = ds  # keeps the raw data just in case
 
@@ -105,12 +104,14 @@ class ESPC:
         url = "https://tds.hycom.org/thredds/dodsC/FMRC_ESPC-D-V02_uv3z/FMRC_ESPC-D-V02_uv3z_best.ncd"
         ds = xr.open_dataset(url, drop_variables="tau")  # , chunks="auto"
 
-        # ds["lon"] = ds["lon"] - 180  # shift longitude from 0-360 to -180-180
+        # rename variables for consistency across all datasets
+        ds = ds.rename({"water_u": "u", "water_v": "v"})
+
+        # convert lon to -180 to 180 and reindex. the sort by lon for consistent indexing
+        ds = ds.assign_coords(lon=(ds.lon - 180) % 360 - 180)
+        ds = ds.sortby("lon")
 
         ds.attrs["model"] = "ESPC"
-        ds = ds.rename(
-            {"water_u": "u", "water_v": "v"}
-        )  # rename variables for consistency across all datasets
 
         self.raw_data = ds
 
@@ -118,25 +119,6 @@ class ESPC:
         endtime = print_endtime()
         print_runtime(starttime, endtime)
         print()
-
-    def convert_coords(self, extent: tuple) -> tuple:
-        """
-        Converts extent to a 0 - 360 degree longitude system.
-
-        Args:
-            extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-
-        Returns:
-            new_extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees, with the latitude converted from -180 - 180 to 0 - 360.
-        """
-        lat_min, lon_min, lat_max, lon_max = extent
-
-        lon_min = lon_min + 180
-        lon_max = lon_max + 180
-
-        new_extent = (lat_min, lon_min, lat_max, lon_max)
-
-        return new_extent
 
     def subset(
         self,
@@ -157,10 +139,7 @@ class ESPC:
         """
         # unpack the dates and extent tuples
         date_min, date_max = dates
-        extent = self.convert_coords(extent)
-        print(extent)
         lat_min, lon_min, lat_max, lon_max = extent
-        print(lat_min, lon_min, lat_max, lon_max)
 
         # subset the data using the xarray .sel selector
         self.data = self.raw_data.sel(
@@ -170,7 +149,7 @@ class ESPC:
             lat=slice(lat_min, lat_max),
         )
 
-        # self.data = self.data.chunk("auto")
+        self.data = self.data.chunk("auto")
 
         print("Subsetted ESPC data.\n")
 
