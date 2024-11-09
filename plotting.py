@@ -200,7 +200,7 @@ def plot_threshold(
         lat2D,
         mag,
         levels=levels,
-        extend="both",
+        extend="max",
         colors=colors,
         transform=ccrs.PlateCarree(),
     )
