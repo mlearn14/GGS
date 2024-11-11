@@ -7,12 +7,12 @@ import cartopy.feature as cfeature
 import cmocean.cm as cmo
 import cool_maps.plot as cplt
 
-# TODO: make colorbar scale with plot size. Example: if plot is wide, make colobar horizontal
+from functions import *
 
 
 def plot_streamlines(
     ds: xr.Dataset, lon: np.ndarray, lat: np.ndarray, density: int = 4
-):
+) -> object:
     """
     Plot current streamlines.
 
@@ -23,7 +23,7 @@ def plot_streamlines(
         density (int, optional): Density of streamlines. Defaults to 4.
 
     Returns:
-        None
+        streamplot (object): Streamplot object.
     """
     u = ds["u"]
     v = ds["v"]
@@ -42,7 +42,9 @@ def plot_streamlines(
     return streamplot
 
 
-def plot_quiver(ds: xr.Dataset, lon: np.ndarray, lat: np.ndarray, scalar: int = 2):
+def plot_quiver(
+    ds: xr.Dataset, lon: np.ndarray, lat: np.ndarray, scalar: int = 2
+) -> object:
     """
     Plot current quiver.
 
@@ -53,7 +55,7 @@ def plot_quiver(ds: xr.Dataset, lon: np.ndarray, lat: np.ndarray, scalar: int = 
         scalar (int, optional): Scalar for subsampling data. Defaults to 2.
 
     Returns:
-        None
+        quiver (object): Quiver plot object.
     """
     u = ds["u"]
     v = ds["v"]
@@ -73,6 +75,11 @@ def plot_quiver(ds: xr.Dataset, lon: np.ndarray, lat: np.ndarray, scalar: int = 
     )
 
     return quiver
+
+
+def format_cbar():
+    """Fomart colorbar depending on figure size."""
+    # TODO: make colorbar scale with plot size. Example: if plot is wide, make colobar horizontal
 
 
 def plot_magnitude(
@@ -97,6 +104,9 @@ def plot_magnitude(
     Returns:
         None
     """
+    print("Plotting magnitudes...")
+    starttime = print_starttime()
+
     lat_min, lon_min, lat_max, lon_max = extent
     cplt.create(
         [lon_min, lon_max, lat_min, lat_max], gridlines=True, proj=ccrs.PlateCarree()
@@ -139,6 +149,10 @@ def plot_magnitude(
     ).values  # keep until you do multiple times
     plt.title(f"{model} {date} Depth Averaged Current Magnitude")
 
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
     plt.tight_layout()
     plt.show()
 
@@ -165,6 +179,9 @@ def plot_threshold(
     Returns:
         None
     """
+    print("Plotting thresholds...")
+    starttime = print_starttime()
+
     lat_min, lon_min, lat_max, lon_max = extent
     cplt.create(
         [lon_min, lon_max, lat_min, lat_max], gridlines=True, proj=ccrs.PlateCarree()
@@ -222,6 +239,10 @@ def plot_threshold(
         "%Y-%m-%d-%H-%M"
     ).values  # keep until you do multiple times
     plt.title(f"{model} {date} Depth Averaged Current Magnitude Thresholds")
+
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
 
     plt.tight_layout()
     plt.show()

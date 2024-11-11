@@ -7,7 +7,6 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 
 # TODO: add RMSE and MAE
-# TODO: add model name to attributes or something so the code can identify it
 
 
 def print_starttime() -> datetime:
@@ -113,8 +112,11 @@ def interpolate_coords(ds: xr.Dataset, ds_common: xr.Dataset) -> xr.Dataset:
 
     if "RTOFS" in ds.attrs["model"]:
         print("ugh")
+        ds_interp = "nothing yet!"  # TODO: add RTOFS interpolation
+    else:
+        ds_interp = ds.interp(lon=ds_common.lon, lat=ds_common.lat).compute()
 
-    ds_interp = ds.interp(lon=ds_common.lon, lat=ds_common.lat).compute()
+    ds_interp = ds_interp.chunk("auto")
 
     print("Done.")
     endtime = print_endtime()
@@ -136,14 +138,14 @@ def depth_average(ds: xr.Dataset) -> xr.Dataset:
     """
     model = ds.attrs["model"]
 
-    print("Depth averaging...")
+    print(f"{model}: Depth averaging...")
     starttime = print_starttime()
 
-    ds_da = ds.mean(dim="depth")
+    ds_da = ds.mean(dim="depth", keep_attrs=True)
     magnitude = np.sqrt(ds_da["u"] ** 2 + ds_da["v"] ** 2)  # Pythagorean theorem
     ds_da = ds_da.assign(magnitude=magnitude)
 
-    ds_da.attrs["model"] = model
+    # ds_da.attrs["model"] = model
 
     print("Done.")
     endtime = print_endtime()

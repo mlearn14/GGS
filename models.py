@@ -8,14 +8,24 @@ from functions import *
 
 
 class CMEMS:
-    """Class for handling Copernicus Marine Environment Monitoring Service (CMEMS) data."""
+    """
+    Class for handling Copernicus Marine Environment Monitoring Service (CMEMS) data.
+
+    Attributes:
+        raw_data (xr.Dataset): Raw data from CMEMS.
+        subset_data (xr.Dataset): Subset of raw data.
+        z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
+        da_data (xr.Dataset): Depth averaged data.
+        xy_interpolated_data (xr.Dataset): Interpolated data to a given set of coordinates.
+    """
 
     def __init__(self) -> None:
         """Initialize the CMEMS instance."""
         self.raw_data: xr.Dataset = None
-        self.data: xr.Dataset = None
-        self.interpolated_data: xr.Dataset = None
+        self.subset_data: xr.Dataset = None
+        self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
+        self.xy_interpolated_data: xr.Dataset = None
 
     def load(
         self, username: str = "maristizabalvar", password: str = "MariaCMEMS2018"
@@ -64,32 +74,44 @@ class CMEMS:
         Returns:
             None
         """
+        model = self.raw_data.attrs["model"]
+
         # unpack the dates and extent tuples
         date_min, date_max = dates
         lat_min, lon_min, lat_max, lon_max = extent
 
         # subset the data using the xarray .sel selector
-        self.data = self.raw_data.sel(
+        self.subset_data = self.raw_data.sel(
             time=slice(date_min, date_max),
             depth=slice(0, depth),
             lon=slice(lon_min, lon_max),
             lat=slice(lat_min, lat_max),
         )
 
-        self.data = self.data.chunk("auto")
+        self.subset_data = self.subset_data.chunk("auto")
 
-        print("Subsetted CMEMS data.\n")
+        print(f"{model}: Subsetted data.\n")
 
 
 class ESPC:
-    """Class for handling Earth System Prediciton Capability (ESPC) data."""
+    """
+    Class for handling Earth System Prediciton Capability (ESPC) data.
+
+    Attributes:
+        raw_data (xr.Dataset): Raw data from CMEMS.
+        subset_data (xr.Dataset): Subset of raw data.
+        z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
+        da_data (xr.Dataset): Depth averaged data.
+        xy_interpolated_data (xr.Dataset): Interpolated data to a given set of coordinates.
+    """
 
     def __init__(self) -> None:
         """Initialize the ESPC instance."""
         self.raw_data: xr.Dataset = None
-        self.data: xr.Dataset = None
-        self.interpolated_data: xr.Dataset = None
+        self.subset_data: xr.Dataset = None
+        self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
+        self.xy_interpolated_data: xr.Dataset = None
 
     def load(self) -> None:
         """
@@ -138,31 +160,43 @@ class ESPC:
             None
         """
         # unpack the dates and extent tuples
+        model = self.raw_data.attrs["model"]
+
         date_min, date_max = dates
         lat_min, lon_min, lat_max, lon_max = extent
 
         # subset the data using the xarray .sel selector
-        self.data = self.raw_data.sel(
+        self.subset_data = self.raw_data.sel(
             time=slice(date_min, date_max),
             depth=slice(0, depth),
             lon=slice(lon_min, lon_max),
             lat=slice(lat_min, lat_max),
         )
 
-        self.data = self.data.chunk("auto")
+        self.subset_data = self.subset_data.chunk("auto")
 
-        print("Subsetted ESPC data.\n")
+        print(f"{model}: Subsetted data.\n")
 
 
 class RTOFS:
-    """Class for handling Real-Time Ocean Forecast System (RTOFS) data."""
+    """
+    Class for handling Real-Time Ocean Forecast System (RTOFS) data.
+
+    Attributes:
+        raw_data (xr.Dataset): Raw data from CMEMS.
+        subset_data (xr.Dataset): Subset of raw data.
+        z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
+        da_data (xr.Dataset): Depth averaged data.
+        xy_interpolated_data (xr.Dataset): Interpolated data to a given set of coordinates.
+    """
 
     def __init__(self) -> None:
         """Initialize the RTOFS instance."""
         self.raw_data: xr.Dataset = None
-        self.data: xr.Dataset = None
-        self.interpolated_data: xr.Dataset = None
+        self.subset_data: xr.Dataset = None
+        self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
+        self.xy_interpolated_data: xr.Dataset = None
 
     def load(self, source: str) -> None:
         """
@@ -221,6 +255,7 @@ class RTOFS:
 
         # Add the model name as an attribute to the dataset
         ds.attrs["model"] = model
+        print(f"Model source: {model}")
 
         # Store the dataset in the instance variable
         self.raw_data = ds
@@ -232,7 +267,7 @@ class RTOFS:
 
     def subset(self, dates: tuple, extent: tuple, depth: float = 1000) -> None:
         """
-        Subsets the RTOFS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
+        Subsets the RTOFS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.subset_data attribute.
 
         Args:
             dates (tuple): A tuple of (date_min, date_max) in datetime format.
@@ -243,11 +278,13 @@ class RTOFS:
             None
         """
         # unpack the dates and extent tuples
+        model = self.raw_data.attrs["model"]
+
         date_min, date_max = dates
         lat_min, lon_min, lat_max, lon_max = extent
 
         # subset the data using the xarray .sel selector
-        self.raw_data = self.raw_data.sel(
+        self.subset_data = self.raw_data.sel(
             time=slice(date_min, date_max), depth=slice(0, depth)
         )
 
@@ -255,12 +292,12 @@ class RTOFS:
         # code adapted from Mike Smith
 
         # Get the grid lons and lats
-        grid_lons = self.raw_data.lon.values[0, :]
-        grid_lats = self.raw_data.lat.values[:, 0]
+        grid_lons = self.subset_data.lon.values[0, :]
+        grid_lats = self.subset_data.lat.values[:, 0]
 
         # Find x, y indexes of the area we want to subset
-        lons_ind = np.interp([lon_min, lon_max], grid_lons, self.raw_data.x.values)
-        lats_ind = np.interp([lat_min, lat_max], grid_lats, self.raw_data.y.values)
+        lons_ind = np.interp([lon_min, lon_max], grid_lons, self.subset_data.x.values)
+        lats_ind = np.interp([lat_min, lat_max], grid_lats, self.subset_data.y.values)
 
         # Use np.floor on the first index and np.ceiling on  the second index
         # of each slice in order to widen the area of the extent slightly.
@@ -273,10 +310,10 @@ class RTOFS:
 
         # Use the xarray .isel selector on x/y
         # since we know the exact indexes we want to slice
-        self.data = self.raw_data.isel(
+        self.subset_data = self.subset_data.isel(
             x=slice(extent[0], extent[1]), y=slice(extent[2], extent[3])
         )
 
-        self.data = self.data.chunk("auto")
+        self.subset_data = self.subset_data.chunk("auto")
 
-        print("Subsetted RTOFS data.\n")
+        print(f"{model}: Subsetted data.\n")
