@@ -61,7 +61,7 @@ class CMEMS:
         self,
         dates: tuple,
         extent: tuple,
-        depth: int = 1000,
+        depth: int = 1100,
     ) -> None:
         """
         Subsets the CMEMS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
@@ -69,7 +69,7 @@ class CMEMS:
         Args:
             dates (tuple): A tuple of (date_min, date_max) in datetime format.
             extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-            depth (float): The maximum depth in meters. Defaults to 1000.
+            depth (float): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
 
         Returns:
             None

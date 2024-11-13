@@ -56,6 +56,34 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
     print(f"Runtime: {runtime}")
 
 
+def calculate_magnitude(ds: xr.Dataset) -> xr.Dataset:
+    """
+    Calculates the magnitude of the model data.
+
+        Args:
+            - ds (xr.Dataset): The model data.
+
+        Returns:
+            - ds (xr.Dataset): The model data with a new variable 'magnitude'.
+    """
+    model = ds.attrs["model"]
+
+    print(f"{model}: Calculating magnitude...")
+    starttime = print_starttime()
+
+    # Pythagorean theorem
+    ds = ds.assign(magnitude=np.sqrt(ds["u"] ** 2 + ds["v"] ** 2))
+
+    # ds = ds.chunk("auto")  # just to make sure
+
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
+    return ds
+
+
 def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     """
     Interpolates the model data to 1 meter depth intervals.
@@ -70,12 +98,17 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     model = ds.attrs["model"]
 
     # Define the depth range that will be interpolated to.
-    # z_range = np.arange(ds["depth"].min(), max_depth + 1, 1)
     z_range = np.arange(0, max_depth + 1, 1)
 
     u = ds["u"]
     v = ds["v"]
     z = ds["depth"]
+
+    # # From Sal's Code, might not use
+    # valid_mask = ~np.isnan(u) & ~np.isnan(v)
+
+    # valid_depths = z[valid_mask]
+    # u_valid, v_valid = u[valid_mask], v[valid_mask]
 
     print(f"{model}: Interpolating depth...")
     starttime = print_starttime()
@@ -85,6 +118,8 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     v_interp = v.interp(depth=z_range).compute()
 
     ds_interp = xr.Dataset({"u": u_interp, "v": v_interp})
+
+    ds_interp = ds_interp.chunk("auto")
 
     ds_interp.attrs["model"] = model
 
@@ -136,16 +171,15 @@ def depth_average(ds: xr.Dataset) -> xr.Dataset:
     Returns:
         - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
     """
+    # TODO: remove magnitude from here and impliment it correctly
     model = ds.attrs["model"]
 
     print(f"{model}: Depth averaging...")
     starttime = print_starttime()
 
     ds_da = ds.mean(dim="depth", keep_attrs=True)
-    magnitude = np.sqrt(ds_da["u"] ** 2 + ds_da["v"] ** 2)  # Pythagorean theorem
-    ds_da = ds_da.assign(magnitude=magnitude)
 
-    # ds_da.attrs["model"] = model
+    ds_da.attrs["model"] = model
 
     print("Done.")
     endtime = print_endtime()
