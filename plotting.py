@@ -27,6 +27,7 @@ def plot_streamlines(
     """
     u = ds["u"]
     v = ds["v"]
+    # mag = ds["magnitude"]  # might not keep!
 
     streamplot = plt.streamplot(
         lon,
@@ -95,7 +96,7 @@ def plot_magnitude(
 
     Args:
         ds (xr.Dataset): xarray dataset containing current data.
-        extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
         streamlines (bool, optional): Plot streamlines. Defaults to False.
         density (int, optional): Density of streamlines. Defaults to 4.
         quiver (bool, optional): Plot quiver. Defaults to False.
@@ -104,7 +105,9 @@ def plot_magnitude(
     Returns:
         None
     """
-    print("Plotting magnitudes...")
+    model = ds.attrs["model"]
+
+    print(f"{model}: Plotting magnitudes...")
     starttime = print_starttime()
 
     lat_min, lon_min, lat_max, lon_max = extent
@@ -112,7 +115,7 @@ def plot_magnitude(
         [lon_min, lon_max, lat_min, lat_max], gridlines=True, proj=ccrs.PlateCarree()
     )
 
-    if "RTOFS" in ds.attrs["model"]:
+    if "RTOFS" in model:
         lon2D = ds["lon"]  # RTOFS already has 2D values for lat and lon
         lat2D = ds["lat"]
     else:
@@ -143,18 +146,17 @@ def plot_magnitude(
             '"streamlines" and "quiver" were not set to True. Plotting magnitude only.'
         )
 
-    model = ds.attrs["model"]
     date = ds.time.dt.strftime(
         "%Y-%m-%d-%H-%M"
     ).values  # keep until you do multiple times
     plt.title(f"{model} {date} Depth Averaged Current Magnitude")
 
+    plt.tight_layout()
+    plt.show()
+
     endtime = print_endtime()
     print_runtime(starttime, endtime)
     print()
-
-    plt.tight_layout()
-    plt.show()
 
 
 def plot_threshold(
@@ -170,7 +172,7 @@ def plot_threshold(
 
     Args:
         ds (xr.Dataset): xarray dataset containing current data.
-        extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
         streamlines (bool, optional): Plot streamlines. Defaults to False.
         density (int, optional): Density of streamlines. Defaults to 4.
         quiver (bool, optional): Plot quiver. Defaults to False.
@@ -179,7 +181,9 @@ def plot_threshold(
     Returns:
         None
     """
-    print("Plotting thresholds...")
+    model = ds.attrs["model"]
+
+    print(f"{model}: Plotting Thresholds...")
     starttime = print_starttime()
 
     lat_min, lon_min, lat_max, lon_max = extent
@@ -240,9 +244,111 @@ def plot_threshold(
     ).values  # keep until you do multiple times
     plt.title(f"{model} {date} Depth Averaged Current Magnitude Thresholds")
 
+    plt.tight_layout()
+    plt.show()
+
     endtime = print_endtime()
     print_runtime(starttime, endtime)
     print()
 
+
+def plot_rmse(da: xr.DataArray, extent: tuple) -> None:
+    """
+    Plot Room Mean Square Error (RMSE).
+
+    Args:
+        da (xr.DataArray): xarray dataset containing RMSE data.
+        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+
+    Returns:
+        None
+    """
+    model = da.attrs["model"]
+
+    print(f"{model}: Plotting RMSE...")
+    starttime = print_starttime()
+
+    lat_min, lon_min, lat_max, lon_max = extent
+    cplt.create(
+        [lon_min, lon_max, lat_min, lat_max], gridlines=True, proj=ccrs.PlateCarree()
+    )
+
+    if "RTOFS" in model:
+        lon2D = da["lon"]  # RTOFS already has 2D values for lat and lon
+        lat2D = da["lat"]
+    else:
+        lon2D, lat2D = np.meshgrid(da.lon, da.lat)  # create 2D values for lat and lon
+
+    levels = 10  # for now
+
+    contourf = plt.contourf(
+        lon2D,
+        lat2D,
+        da.values,
+        levels=levels,
+        cmap=cmo.deep,
+        transform=ccrs.PlateCarree(),
+    )
+    cbar = plt.colorbar(contourf, label="RMSE ($\mathregular{ms^{-1}}$)")
+
+    date = da.time.dt.strftime("%Y-%m-%d-%H-%M").values  # for now
+
+    plt.title(f"{model} {date} RMSE")
+
     plt.tight_layout()
     plt.show()
+
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
+
+def plot_mae(da: xr.DataArray, extent: tuple) -> None:
+    """
+    Plot Mean Absolute Error (MAE).
+
+    Args:
+        da (xr.DataArray): xarray dataset containing MAE data.
+        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+
+    Returns:
+        None
+    """
+    model = da.attrs["model"]
+
+    print(f"{model}: Plotting MAE...")
+    starttime = print_starttime()
+
+    lat_min, lon_min, lat_max, lon_max = extent
+    cplt.create(
+        [lon_min, lon_max, lat_min, lat_max], gridlines=True, proj=ccrs.PlateCarree()
+    )
+
+    if "RTOFS" in model:
+        lon2D = da["lon"]  # RTOFS already has 2D values for lat and lon
+        lat2D = da["lat"]
+    else:
+        lon2D, lat2D = np.meshgrid(da.lon, da.lat)  # create 2D values for lat and lon
+
+    levels = 10  # for now
+
+    contourf = plt.contourf(
+        lon2D,
+        lat2D,
+        da.values,
+        levels=levels,
+        cmap=cmo.deep,
+        transform=ccrs.PlateCarree(),
+    )
+    cbar = plt.colorbar(contourf, label="MAE ($\mathregular{ms^{-1}}$)")  # units????
+
+    date = da.time.dt.strftime("%Y-%m-%d-%H-%M").values  # for now
+
+    plt.title(f"{model} {date} MAE")
+
+    plt.tight_layout()
+    plt.show()
+
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()

@@ -1,12 +1,9 @@
 from tracemalloc import start
 import xarray as xr
+import xesmf as xe
 import numpy as np
 import datetime as dt
 from datetime import datetime
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_absolute_error
-
-# TODO: add RMSE and MAE
 
 
 def print_starttime() -> datetime:
@@ -71,10 +68,12 @@ def calculate_magnitude(ds: xr.Dataset) -> xr.Dataset:
     print(f"{model}: Calculating magnitude...")
     starttime = print_starttime()
 
-    # Pythagorean theorem
-    ds = ds.assign(magnitude=np.sqrt(ds["u"] ** 2 + ds["v"] ** 2))
+    # Calculate magnitude (derived from Pythagoras)
+    magnitude = np.sqrt(ds["u"] ** 2 + ds["v"] ** 2)
 
-    # ds = ds.chunk("auto")  # just to make sure
+    magnitude.attrs["model"] = model
+    ds = ds.assign(magnitude=magnitude)
+    ds = ds.chunk("auto")  # just to make sure
 
     print("Done.")
     endtime = print_endtime()
@@ -102,7 +101,6 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
 
     u = ds["u"]
     v = ds["v"]
-    z = ds["depth"]
 
     # # From Sal's Code, might not use
     # valid_mask = ~np.isnan(u) & ~np.isnan(v)
@@ -118,40 +116,8 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     v_interp = v.interp(depth=z_range).compute()
 
     ds_interp = xr.Dataset({"u": u_interp, "v": v_interp})
-
     ds_interp = ds_interp.chunk("auto")
-
     ds_interp.attrs["model"] = model
-
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return ds_interp
-
-
-def interpolate_coords(ds: xr.Dataset, ds_common: xr.Dataset) -> xr.Dataset:
-    """
-    Interpolates the model data to a given set of coordinates.
-
-    Args:
-        - ds (xr.Dataset): The model data.
-        - ds_common (xr.Dataset): The common coordinates to interpolate to.
-
-    Returns:
-        - ds_interp (xr.Dataset): The interpolated model data.
-    """
-    print("Interpolating coordinates...")
-    starttime = print_starttime()
-
-    if "RTOFS" in ds.attrs["model"]:
-        print("ugh")
-        ds_interp = "nothing yet!"  # TODO: add RTOFS interpolation
-    else:
-        ds_interp = ds.interp(lon=ds_common.lon, lat=ds_common.lat).compute()
-
-    ds_interp = ds_interp.chunk("auto")
 
     print("Done.")
     endtime = print_endtime()
@@ -187,3 +153,73 @@ def depth_average(ds: xr.Dataset) -> xr.Dataset:
     print()
 
     return ds_da
+
+
+def calculate_rmse(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
+    """
+    Calculates the root mean squared error between two datasets.
+
+    Args:
+        - model1 (xr.Dataset): The first dataset.
+        - model2 (xr.Dataset): The second dataset.
+
+    Returns:
+        - rmse (xr.DataArray): The root mean squared error between the two datasets.
+    """
+    model1name = model1.attrs["model"]
+    model2name = model2.attrs["model"]
+
+    print(f"{model1name} & {model2name}: Calculating RMSE...")
+    starttime = print_starttime()
+
+    # Interpolate model2 to model1. Code from Mike Smith.
+    grid_out = xr.Dataset({"lat": model1["lat"], "lon": model1["lon"]})
+    regridder = xe.Regridder(model2, grid_out, "bilinear", extrap_method="nearest_s2d")
+    model2_interp = regridder(model2)
+
+    diff = model1.magnitude - model2_interp.magnitude
+    rmse = np.sqrt(np.square(diff).mean(dim="depth"))
+
+    rmse.attrs["model"] = f"{model1name} & {model2name}"
+
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
+    return rmse
+
+
+def calculate_mae(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
+    """
+    Calculates the mean absolute error between two datasets.
+
+    Args:
+        - model1 (xr.Dataset): The first dataset.
+        - model2 (xr.Dataset): The second dataset.
+
+    Returns:
+        - mae (xr.DataArray): The mean absolute error between the two datasets.
+    """
+    model1name = model1.attrs["model"]
+    model2name = model2.attrs["model"]
+
+    print(f"{model1name} & {model2name}: Calculating MAE...")
+    starttime = print_starttime()
+
+    # Interpolate model2 to model1. Code from Mike Smith.
+    grid_out = xr.Dataset({"lat": model1["lat"], "lon": model1["lon"]})
+    regridder = xe.Regridder(model2, grid_out, "bilinear", extrap_method="nearest_s2d")
+    model2_interp = regridder(model2)
+
+    diff = model1.magnitude - model2_interp.magnitude
+    mae = np.abs(diff).mean(dim="depth")
+
+    mae.attrs["model"] = f"{model1name} & {model2name}"
+
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
+    return mae
