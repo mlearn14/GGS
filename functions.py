@@ -1,4 +1,5 @@
-from tracemalloc import start
+# author: matthew learn (matt.learn@marine.rutgers.edu)
+
 import xarray as xr
 import xesmf as xe
 import numpy as np
@@ -102,12 +103,6 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     u = ds["u"]
     v = ds["v"]
 
-    # # From Sal's Code, might not use
-    # valid_mask = ~np.isnan(u) & ~np.isnan(v)
-
-    # valid_depths = z[valid_mask]
-    # u_valid, v_valid = u[valid_mask], v[valid_mask]
-
     print(f"{model}: Interpolating depth...")
     starttime = print_starttime()
 
@@ -125,6 +120,39 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     print()
 
     return ds_interp
+
+
+def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset) -> xr.Dataset:
+    """
+    Regrids the first dataset to the second dataset.
+
+        Args:
+            - ds1 (xr.Dataset): The first dataset. This is the dataset that will be regridded.
+            - ds2 (xr.Dataset): The second dataset. This is the dataset that the first dataset will be regridded to.
+
+        Returns:
+            - ds1_regridded (xr.Dataset): The first dataset regridded to the second dataset.
+    """
+    model = ds1.attrs["model"]
+
+    print(f"{model}: Regridding to {ds2.attrs['model']}...")
+    starttime = print_starttime()
+
+    # Code from Mike Smith.
+    ds1_regridded = ds1.reindex_like(ds2, method="nearest")
+
+    grid_out = xr.Dataset({"lat": ds2["lat"], "lon": ds2["lon"]})
+    regridder = xe.Regridder(ds1, grid_out, "bilinear", extrap_method="nearest_s2d")
+
+    ds1_regridded = regridder(ds1)
+    ds1_regridded.attrs["model"] = model
+
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
+    return ds1_regridded
 
 
 def depth_average(ds: xr.Dataset) -> xr.Dataset:
@@ -155,71 +183,104 @@ def depth_average(ds: xr.Dataset) -> xr.Dataset:
     return ds_da
 
 
-def calculate_rmse(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
+def calculate_rmsd(
+    model1: xr.Dataset, model2: xr.Dataset, regrid: bool = True
+) -> xr.DataArray:
     """
-    Calculates the root mean squared error between two datasets.
+    Calculates the root mean squared difference between two datasets.
 
     Args:
         - model1 (xr.Dataset): The first dataset.
         - model2 (xr.Dataset): The second dataset.
+        - regrid (bool, optional): Whether to regrid model1 to model2. Defaults to True.
 
     Returns:
-        - rmse (xr.DataArray): The root mean squared error between the two datasets.
+        - rmsd (xr.DataArray): The root mean squared difference between the two datasets.
     """
     model1name = model1.attrs["model"]
     model2name = model2.attrs["model"]
 
-    print(f"{model1name} & {model2name}: Calculating RMSE...")
+    print(f"{model1name} & {model2name}: Calculating RMSD...")
     starttime = print_starttime()
 
-    # Interpolate model2 to model1. Code from Mike Smith.
-    grid_out = xr.Dataset({"lat": model1["lat"], "lon": model1["lon"]})
-    regridder = xe.Regridder(model2, grid_out, "bilinear", extrap_method="nearest_s2d")
-    model2_interp = regridder(model2)
+    if regrid:
+        # Interpolate model2 to model1.
+        model1 = regrid_ds(model1, model2)
 
-    diff = model1.magnitude - model2_interp.magnitude
-    rmse = np.sqrt(np.square(diff).mean(dim="depth"))
+    diff = model1.magnitude - model2.magnitude
+    rmsd = np.sqrt(np.square(diff).mean(dim="depth"))
 
-    rmse.attrs["model"] = f"{model1name} & {model2name}"
+    rmsd.attrs["model"] = f"{model1name} & {model2name}"
 
     print("Done.")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
     print()
 
-    return rmse
+    return rmsd
 
 
-def calculate_mae(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
+def calculate_mad(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
     """
-    Calculates the mean absolute error between two datasets.
+    Calculates the mean absolute difference between two datasets.
 
     Args:
         - model1 (xr.Dataset): The first dataset.
         - model2 (xr.Dataset): The second dataset.
 
     Returns:
-        - mae (xr.DataArray): The mean absolute error between the two datasets.
+        - mae (xr.DataArray): The mean absolute difference between the two datasets.
     """
     model1name = model1.attrs["model"]
     model2name = model2.attrs["model"]
 
-    print(f"{model1name} & {model2name}: Calculating MAE...")
+    print(f"{model1name} & {model2name}: Calculating MAD...")
     starttime = print_starttime()
 
-    # Interpolate model2 to model1. Code from Mike Smith.
-    grid_out = xr.Dataset({"lat": model1["lat"], "lon": model1["lon"]})
-    regridder = xe.Regridder(model2, grid_out, "bilinear", extrap_method="nearest_s2d")
-    model2_interp = regridder(model2)
+    # Interpolate model2 to model1.
+    model2_interp = regrid_ds(model2, model1)
 
     diff = model1.magnitude - model2_interp.magnitude
-    mae = np.abs(diff).mean(dim="depth")
+    mad = np.abs(diff).mean(dim="depth")
 
-    mae.attrs["model"] = f"{model1name} & {model2name}"
+    mad.attrs["model"] = f"{model1name} & {model2name}"
 
     print("Done.")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
     print()
 
-    return mae
+    return mad
+
+
+def calculate_simple_mean(ds_list: list[xr.Dataset]) -> xr.Dataset:
+    """
+    Calculates the simple mean of a list of datasets. Returns a single xr.Dataset of the simple means.
+
+    Args:
+        - ds_list (list[xr.Dataset]): A list of xr.Datasets.
+
+    Returns:
+        - simple_mean (xr.Dataset): The simple mean of the list of datasets.
+    """
+    length = len(ds_list)
+    total = sum(ds_list)
+    simple_mean = total / length
+
+    return simple_mean
+
+
+def calculate_mean_difference(ds_list: list[xr.Dataset]) -> xr.Dataset:
+    """
+    Calculates the mean difference between a list of datasets. Returns a single xr.Dataset of the mean differences.
+
+    Args:
+        - ds_list (list[xr.Dataset]): A list of xr.Datasets.
+
+    Returns:
+        - mean_diff (xr.Dataset): The mean difference between the list of datasets.
+    """
+    length = len(ds_list)
+    total = sum(ds_list)
+
+    # TODO: find code that goes through every dataset combination. Is in a coding assignment!

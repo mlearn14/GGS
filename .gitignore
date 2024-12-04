@@ -1,5 +1,7 @@
 # local ignores
 data/*
+plots/*
+Oceanshot_Figure_Generator.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

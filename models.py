@@ -1,3 +1,5 @@
+# author: matthew learn (matt.learn@marine.rutgers.edu)
+
 import numpy as np
 import xarray as xr
 import copernicusmarine as cm
