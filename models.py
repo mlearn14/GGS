@@ -51,6 +51,7 @@ class CMEMS:
         ds = ds.rename({"longitude": "lon", "latitude": "lat", "uo": "u", "vo": "v"})
 
         ds.attrs["model"] = "CMEMS"
+        ds.attrs["filename"] = "CMEMS"
 
         self.raw_data = ds  # keeps the raw data just in case
 
@@ -136,6 +137,7 @@ class ESPC:
         ds = ds.sortby("lon")
 
         ds.attrs["model"] = "ESPC"
+        ds.attrs["filename"] = "ESPC"
 
         self.raw_data = ds
 
@@ -228,6 +230,13 @@ class RTOFS:
             "parallel": "RTOFS (Parallel)",
         }
 
+        # Create a dictionary mapping source names to model names formatted for filenames
+        filename_dict = {
+            "east": "RTOFS-east",
+            "west": "RTOFS-west",
+            "parallel": "RTOFS-parallel",
+        }
+
         # Check if the source is valid
         if source not in url_dict:
             raise ValueError(
@@ -237,6 +246,7 @@ class RTOFS:
         # Get the URL and model name from the dictionaries
         url = url_dict[source]
         model = model_dict[source]
+        filename = filename_dict[source]
 
         # Open the dataset using xarray
         ds = xr.open_dataset(url)
@@ -258,6 +268,9 @@ class RTOFS:
         # Add the model name as an attribute to the dataset
         ds.attrs["model"] = model
         print(f"Model source: {model}")
+
+        # Add the filename as an attribute to the dataset
+        ds.attrs["filename"] = filename
 
         # Store the dataset in the instance variable
         self.raw_data = ds

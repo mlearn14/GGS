@@ -5,6 +5,7 @@ import xesmf as xe
 import numpy as np
 import datetime as dt
 from datetime import datetime
+import os
 
 
 def print_starttime() -> datetime:
@@ -54,6 +55,42 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
     print(f"Runtime: {runtime}")
 
 
+def generate_filename(
+    date: str,
+    figure_type: str,
+    plot_type: str,
+    model_name: str,
+    output_dir: str = "figures",
+) -> str:
+    """
+    Generate a standardized filename for saving figures.
+
+    Parameters:
+        date (str): The date in YYYYMMDD format.
+        figure_type (str): Type of figure (e.g., 'magnitude', 'threshold', 'rmsd').
+        plot_type (str): Type of plot (e.g., 'streamplot', 'quiverplot', 'none').
+        model_names (list): Model names(s) (e.g., 'RTOFS', 'CMEMS', 'RTOFS+CMEMS').
+        output_dir (str): Directory where the file will be saved. Default is 'figures'.
+
+    Returns:
+        filename (str): Full path for the output file.
+    """
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Construct the file name
+    filename = f"{date}_{figure_type}_{plot_type}_{model_name}.png"
+
+    # Combine directory and file name
+    return os.path.join(output_dir, filename)
+
+
+def save_fig(fig: object, filename: str) -> None:
+    print(f"Saving figure to {filename}")
+    fig.savefig(filename, bbox_inches="tight", dpi=300)
+    print("Saved.")
+
+
 def calculate_magnitude(ds: xr.Dataset) -> xr.Dataset:
     """
     Calculates the magnitude of the model data.
@@ -65,6 +102,7 @@ def calculate_magnitude(ds: xr.Dataset) -> xr.Dataset:
             - ds (xr.Dataset): The model data with a new variable 'magnitude'.
     """
     model = ds.attrs["model"]
+    filename = ds.attrs["filename"]
 
     print(f"{model}: Calculating magnitude...")
     starttime = print_starttime()
@@ -73,6 +111,7 @@ def calculate_magnitude(ds: xr.Dataset) -> xr.Dataset:
     magnitude = np.sqrt(ds["u"] ** 2 + ds["v"] ** 2)
 
     magnitude.attrs["model"] = model
+    magnitude.attrs["filename"] = filename
     ds = ds.assign(magnitude=magnitude)
     ds = ds.chunk("auto")  # just to make sure
 
@@ -96,6 +135,7 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
             - ds_interp (xr.Dataset): The interpolated model data.
     """
     model = ds.attrs["model"]
+    filename = ds.attrs["filename"]
 
     # Define the depth range that will be interpolated to.
     z_range = np.arange(0, max_depth + 1, 1)
@@ -113,6 +153,7 @@ def interpolate_depth(ds: xr.Dataset, max_depth: int = 1000) -> xr.Dataset:
     ds_interp = xr.Dataset({"u": u_interp, "v": v_interp})
     ds_interp = ds_interp.chunk("auto")
     ds_interp.attrs["model"] = model
+    ds_interp.attrs["filename"] = filename
 
     print("Done.")
     endtime = print_endtime()
@@ -134,6 +175,7 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset) -> xr.Dataset:
             - ds1_regridded (xr.Dataset): The first dataset regridded to the second dataset.
     """
     model = ds1.attrs["model"]
+    filename = ds1.attrs["filename"]
 
     print(f"{model}: Regridding to {ds2.attrs['model']}...")
     starttime = print_starttime()
@@ -146,11 +188,11 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset) -> xr.Dataset:
 
     ds1_regridded = regridder(ds1)
     ds1_regridded.attrs["model"] = model
+    ds1_regridded.attrs["filename"] = filename
 
     print("Done.")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
-    print()
 
     return ds1_regridded
 
@@ -165,8 +207,8 @@ def depth_average(ds: xr.Dataset) -> xr.Dataset:
     Returns:
         - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
     """
-    # TODO: remove magnitude from here and impliment it correctly
     model = ds.attrs["model"]
+    filename = ds.attrs["filename"]
 
     print(f"{model}: Depth averaging...")
     starttime = print_starttime()
@@ -174,6 +216,7 @@ def depth_average(ds: xr.Dataset) -> xr.Dataset:
     ds_da = ds.mean(dim="depth", keep_attrs=True)
 
     ds_da.attrs["model"] = model
+    ds_da.attrs["filename"] = filename
 
     print("Done.")
     endtime = print_endtime()
@@ -193,12 +236,21 @@ def calculate_rmsd(
         - model1 (xr.Dataset): The first dataset.
         - model2 (xr.Dataset): The second dataset.
         - regrid (bool, optional): Whether to regrid model1 to model2. Defaults to True.
+            - NOTE: If RTOFS data is used, put the RTOFS dataset first!
 
     Returns:
         - rmsd (xr.DataArray): The root mean squared difference between the two datasets.
     """
-    model1name = model1.attrs["model"]
-    model2name = model2.attrs["model"]
+    model1name: str = model1.attrs["model"]
+    model2name: str = model2.attrs["model"]
+
+    filename = sorted(
+        [
+            model1.attrs["filename"],
+            model2.attrs["filename"],
+        ]
+    )
+    filename = "+".join(filename)
 
     print(f"{model1name} & {model2name}: Calculating RMSD...")
     starttime = print_starttime()
@@ -211,6 +263,7 @@ def calculate_rmsd(
     rmsd = np.sqrt(np.square(diff).mean(dim="depth"))
 
     rmsd.attrs["model"] = f"{model1name} & {model2name}"
+    rmsd.attrs["filename"] = filename
 
     print("Done.")
     endtime = print_endtime()
@@ -224,6 +277,8 @@ def calculate_mad(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
     """
     Calculates the mean absolute difference between two datasets.
 
+    WARNING: This function will be deprecated soon.
+
     Args:
         - model1 (xr.Dataset): The first dataset.
         - model2 (xr.Dataset): The second dataset.
@@ -231,8 +286,9 @@ def calculate_mad(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
     Returns:
         - mae (xr.DataArray): The mean absolute difference between the two datasets.
     """
-    model1name = model1.attrs["model"]
-    model2name = model2.attrs["model"]
+    model1name: str = model1.attrs["model"]
+    model2name: str = model2.attrs["model"]
+    model_list: list = [model1name, model2name].sort()
 
     print(f"{model1name} & {model2name}: Calculating MAD...")
     starttime = print_starttime()
@@ -243,7 +299,7 @@ def calculate_mad(model1: xr.Dataset, model2: xr.Dataset) -> xr.DataArray:
     diff = model1.magnitude - model2_interp.magnitude
     mad = np.abs(diff).mean(dim="depth")
 
-    mad.attrs["model"] = f"{model1name} & {model2name}"
+    mad.attrs["model"] = model_list
 
     print("Done.")
     endtime = print_endtime()

@@ -11,13 +11,39 @@ import cool_maps.plot as cplt
 
 from functions import *
 
+# TODO: change so that figure is initialized first and then passed into each function as an argument to spead up plotting times
 
-def save_fig(fig: object, name: str) -> None:
-    # TODO: update to match new directory structure
-    fname: str = f"plots/{name}.png"
-    print(f"Saving figure to {fname}")
-    fig.savefig(fname, bbox_inches="tight", dpi=300)
-    print("Saved.")
+
+def format_plot(
+    extent: tuple, figsize: tuple = (12, 8), projection: ccrs = ccrs.Mercator()
+) -> tuple:
+    """
+    Format plot.
+
+    Args:
+        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+        figsize (tuple, optional): Figure size. Defaults to (12, 8).
+        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
+
+    Returns:
+        tuple: Tuple containing:
+        - fig (object): Figure object.
+        - ax (object): Axis object.
+    """
+    lat_min, lon_min, lat_max, lon_max = extent
+
+    fig = plt.figure(figsize=figsize)
+    # leave some space for colorbar
+    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection=projection)
+
+    cplt.create(
+        [lon_min, lon_max, lat_min, lat_max],
+        gridlines=True,
+        ax=ax,
+        proj=projection,
+    )
+
+    return fig, ax
 
 
 def plot_streamlines(
@@ -91,38 +117,6 @@ def plot_quiver(
     return quiver
 
 
-def format_plot(
-    extent: tuple, figsize: tuple = (12, 8), projection: ccrs = ccrs.PlateCarree()
-) -> tuple:
-    """
-    Format plot.
-
-    Args:
-        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.PlateCarree().
-
-    Returns:
-        tuple: Tuple containing:
-        - fig (object): Figure object.
-        - ax (object): Axis object.
-    """
-    lat_min, lon_min, lat_max, lon_max = extent
-
-    fig = plt.figure(figsize=figsize)
-    # leave some space for colorbar
-    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection=projection)
-
-    cplt.create(
-        [lon_min, lon_max, lat_min, lat_max],
-        gridlines=True,
-        ax=ax,
-        proj=ccrs.PlateCarree(),
-    )
-
-    return fig, ax
-
-
 def format_cbar(fig: object, ax: object, im: object, label: str) -> object:
     """
     Fomart colorbar depending on figure size.
@@ -157,9 +151,9 @@ def plot_magnitude(
     scalar: int = 4,
     extend: str = "max",
     figsize: tuple = (12, 8),
-    projection=ccrs.PlateCarree(),
+    projection=ccrs.Mercator(),
     savefig: bool = False,
-) -> None:
+) -> object:
     """
     Plot current magnitudes.
 
@@ -172,13 +166,14 @@ def plot_magnitude(
         scalar (int, optional): Scalar for subsampling data. Defaults to 4.
         extend (str, optional): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
         figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.PlateCarree().
+        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
         savefig (bool, optional): Save figure. Defaults to False.
 
     Returns:
-        None
+        fig (object): Figure object.
     """
     model = ds.attrs["model"]
+    model_filename = ds.attrs["filename"]
 
     print(f"{model}: Plotting magnitudes...")
     starttime = print_starttime()
@@ -215,15 +210,15 @@ def plot_magnitude(
     # Plot streamlines or quiver
     if streamlines:
         plot_streamlines(ax, ds, lon2D, lat2D, density=density)
-        plot_type = "_str"
+        plot_type = "streamplot"
     elif quiver:
         plot_quiver(ax, ds, lon2D, lat2D, scalar=scalar)
-        plot_type = "_qvr"
+        plot_type = "quiverplot"
     else:
         print(
             '"streamlines" and "quiver" were not set to True. Plotting magnitude only.'
         )
-        plot_type = None
+        plot_type = "none"
 
     date = ds.time.dt.strftime("%Y-%m-%d-%H-%M").values
     #  ^^^ keep until you do multiple times ^^^
@@ -232,13 +227,17 @@ def plot_magnitude(
     plt.tight_layout()
 
     if savefig:
-        save_fig(fig, f"{model}_magnitude{plot_type}")
+        fdate = ds.time.dt.strftime("%Y%m%d-%H%M").values
+        filename = generate_filename(fdate, "magnitude", plot_type, model_filename)
+        save_fig(fig, filename)
 
     # plt.show()
 
     endtime = print_endtime()
     print_runtime(starttime, endtime)
     print()
+
+    return fig
 
 
 def plot_threshold(
@@ -249,9 +248,9 @@ def plot_threshold(
     quiver: bool = False,
     scalar: int = 4,
     figsize: tuple = (12, 8),
-    projection=ccrs.PlateCarree(),
+    projection=ccrs.Mercator(),
     savefig: bool = False,
-) -> None:
+) -> object:
     """
     Plot current thresholds.
 
@@ -263,13 +262,14 @@ def plot_threshold(
         quiver (bool, optional): Plot quiver. Defaults to False.
         scalar (int, optional): Scalar for subsampling data. Defaults to 4.
         figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.PlateCarree().
+        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
         savefig (bool, optional): Save figure. Defaults to False.
 
     Returns:
-        None
+        fig (object): Figure object.
     """
     model = ds.attrs["model"]
+    model_filename = ds.attrs["filename"]
 
     print(f"{model}: Plotting Thresholds...")
     starttime = print_starttime()
@@ -324,15 +324,15 @@ def plot_threshold(
 
     if streamlines:
         plot_streamlines(ax, ds, lon2D, lat2D, density=density)
-        plot_type = "_str"
+        plot_type = "streamplot"
     elif quiver:
         plot_quiver(ax, ds, lon2D, lat2D, scalar=scalar)
-        plot_type = "_qvr"
+        plot_type = "quiverplot"
     else:
         print(
             '"streamlines" and "quiver" were not set to True. Plotting magnitude only.'
         )
-        plot_type = None
+        plot_type = "none"
 
     legend = plt.legend(handles=patches, loc="best")
     legend.set_zorder(100)
@@ -345,7 +345,9 @@ def plot_threshold(
     plt.tight_layout()
 
     if savefig:
-        save_fig(fig, f"{model}_threshold{plot_type}")
+        fdate = ds.time.dt.strftime("%Y%m%d-%H%M").values
+        filename = generate_filename(fdate, "threshold", plot_type, model_filename)
+        save_fig(fig, filename)
 
     # plt.show()
 
@@ -353,14 +355,16 @@ def plot_threshold(
     print_runtime(starttime, endtime)
     print()
 
+    return fig
+
 
 def plot_rmsd(
     da: xr.DataArray,
     extent: tuple,
     figsize: tuple = (12, 8),
-    projection=ccrs.PlateCarree(),
+    projection=ccrs.Mercator(),
     savefig: bool = False,
-) -> None:
+) -> object:
     """
     Plot Room Mean Square Difference (RMSD).
 
@@ -368,22 +372,23 @@ def plot_rmsd(
         da (xr.DataArray): xarray dataset containing RMSD data.
         extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
         figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.PlateCarree().
+        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
         savefig (bool, optional): Save figure. Defaults to False.
 
     Returns:
-        None
+        fig (object): Figure object.
     """
-    model = da.attrs["model"]
+    models = da.attrs["model"]
+    model_filename = da.attrs["filename"]
 
-    print(f"{model}: Plotting RMSD...")
+    print(f"{models}: Plotting RMSD...")
     starttime = print_starttime()
 
     # Initialize plot
     fig, ax = format_plot(extent, figsize=figsize, projection=projection)
 
     # Create 2D values for lat and lon
-    if "RTOFS (East Coast)" and "RTOFS (Parallel)" in model:
+    if "RTOFS (East Coast)" and "RTOFS (Parallel)" in models:
         # RTOFS already has 2D values for lat and lon
         # Only applicable to RTOFS-RTOFS RMSDs.
         lon2D = da["lon"]
@@ -409,12 +414,14 @@ def plot_rmsd(
 
     date = da.time.dt.strftime("%Y-%m-%d-%H-%M").values  # for now
 
-    ax.set_title(f"{model} {date} Root Mean Square Difference (RMSD)")
+    ax.set_title(f"{models} {date} Root Mean Square Difference (RMSD)")
 
     plt.tight_layout()
 
     if savefig:
-        save_fig(fig, f"{model}_rmsd")
+        fdate = da.time.dt.strftime("%Y%m%d-%H%M").values
+        filename = generate_filename(fdate, "rmsd", "none", model_filename)
+        save_fig(fig, filename)
 
     # plt.show()
 
@@ -422,14 +429,16 @@ def plot_rmsd(
     print_runtime(starttime, endtime)
     print()
 
+    return fig
+
 
 def plot_mad(
     da: xr.DataArray,
     extent: tuple,
     figsize: tuple = (12, 8),
-    projection=ccrs.PlateCarree(),
+    projection=ccrs.Mercator(),
     savefig: bool = False,
-) -> None:
+) -> object:
     """
     Plot Mean Absolute Difference (MAD).
 
@@ -437,11 +446,11 @@ def plot_mad(
         da (xr.DataArray): xarray dataset containing MAD data.
         extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
         figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.PlateCarree().
+        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
         savefig (bool, optional): Save figure. Defaults to False.
 
     Returns:
-        None
+        fig (object): Figure object.
     """
     model = da.attrs["model"]
 
@@ -490,3 +499,5 @@ def plot_mad(
     endtime = print_endtime()
     print_runtime(starttime, endtime)
     print()
+
+    return fig

@@ -12,8 +12,8 @@ def main() -> None:
     print("Starting script...")
     starttime = print_starttime()
 
-    start_date = "2024-11-20"
-    end_date = "2024-11-20"
+    start_date = "2024-12-23"
+    end_date = "2024-12-23"
     depth = 1000
     lon_min = -79
     lon_max = -50
@@ -63,45 +63,45 @@ def main() -> None:
 
     # Take RMSD
     rmsd_c_e = calculate_rmsd(cmems_ds, espc_ds)
-    rmsd_c_re = calculate_rmsd(cmems_ds, rtofs_e_ds)
-    rmsd_c_rp = calculate_rmsd(cmems_ds, rtofs_p_ds)
-    rmsd_e_re = calculate_rmsd(espc_ds, rtofs_e_ds)
-    rmsd_e_rp = calculate_rmsd(espc_ds, rtofs_p_ds)
+    rmsd_c_re = calculate_rmsd(rtofs_e_ds, cmems_ds)
+    rmsd_c_rp = calculate_rmsd(rtofs_p_ds, cmems_ds)
+    rmsd_e_re = calculate_rmsd(rtofs_e_ds, espc_ds)
+    rmsd_e_rp = calculate_rmsd(rtofs_p_ds, espc_ds)
     rmsd_re_rp = calculate_rmsd(rtofs_e_ds, rtofs_p_ds)
 
-    # Take MAD
-    mad_c_e = calculate_mad(cmems_ds, espc_ds)
-    mad_c_re = calculate_mad(cmems_ds, rtofs_e_ds)
-    mad_c_rp = calculate_mad(cmems_ds, rtofs_p_ds)
-    mad_e_re = calculate_mad(espc_ds, rtofs_e_ds)
-    mad_e_rp = calculate_mad(espc_ds, rtofs_p_ds)
-    mad_re_rp = calculate_mad(rtofs_e_ds, rtofs_p_ds)
+    # # Take MAD
+    # mad_c_e = calculate_mad(cmems_ds, espc_ds)
+    # mad_c_re = calculate_mad(cmems_ds, rtofs_e_ds)
+    # mad_c_rp = calculate_mad(cmems_ds, rtofs_p_ds)
+    # mad_e_re = calculate_mad(espc_ds, rtofs_e_ds)
+    # mad_e_rp = calculate_mad(espc_ds, rtofs_p_ds)
+    # mad_re_rp = calculate_mad(rtofs_e_ds, rtofs_p_ds)
 
     # Plot Magnitudes
     plot_magnitude(cmems_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_magnitude(cmems_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_magnitude(cmems_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     plot_magnitude(espc_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_magnitude(espc_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_magnitude(espc_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     plot_magnitude(rtofs_e_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_magnitude(rtofs_e_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_magnitude(rtofs_e_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     plot_magnitude(rtofs_p_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_magnitude(rtofs_p_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_magnitude(rtofs_p_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     # Plot Thresholds
     plot_threshold(cmems_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_threshold(cmems_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_threshold(cmems_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     plot_threshold(espc_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_threshold(espc_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_threshold(espc_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     plot_threshold(rtofs_e_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_threshold(rtofs_e_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_threshold(rtofs_e_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     plot_threshold(rtofs_p_dac, extent, streamlines=True, density=density, savefig=True)
-    plot_threshold(rtofs_p_dac, extent, quiver=True, scalar=scalar, savefig=True)
+    # plot_threshold(rtofs_p_dac, extent, quiver=True, scalar=scalar, savefig=True)
 
     # # Plot RMSD
     plot_rmsd(rmsd_c_e, extent, savefig=True)
@@ -111,15 +111,15 @@ def main() -> None:
     plot_rmsd(rmsd_e_rp, extent, savefig=True)
     plot_rmsd(rmsd_re_rp, extent, savefig=True)
 
-    # Plot MAD
-    plot_mad(mad_c_e, extent, savefig=True)
-    plot_mad(mad_c_re, extent, savefig=True)
-    plot_mad(mad_c_rp, extent, savefig=True)
-    plot_mad(mad_e_re, extent, savefig=True)
-    plot_mad(mad_e_rp, extent, savefig=True)
-    plot_mad(mad_re_rp, extent, savefig=True)
+    # # Plot MAD
+    # plot_mad(mad_c_e, extent, savefig=True)
+    # plot_mad(mad_c_re, extent, savefig=True)
+    # plot_mad(mad_c_rp, extent, savefig=True)
+    # plot_mad(mad_e_re, extent, savefig=True)
+    # plot_mad(mad_e_rp, extent, savefig=True)
+    # plot_mad(mad_re_rp, extent, savefig=True)
 
-    print("Done.")
+    print("Script Completed.")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
 

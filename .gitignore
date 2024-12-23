@@ -1,7 +1,8 @@
 # local ignores
 data/*
-plots/*
+figures/*
 Oceanshot_Figure_Generator.ipynb
+streamlit_test.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
