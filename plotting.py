@@ -1,134 +1,206 @@
 # author: matthew learn (matt.learn@marine.rutgers.edu)
 
-import numpy as np
-import xarray as xr
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 import cmocean.cm as cmo
 import cool_maps.plot as cplt
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import numpy as np
+import streamlit as st  # for later
 
 from functions import *
 
-# TODO: change so that figure is initialized first and then passed into each function as an argument to spead up plotting times
+# TODO: add plotting function for optimized path. Then add it to the create_map function.
 
 
-def format_plot(
+### Plotting initialization ###
+@st.cache_data
+def initialize_fig(
     extent: tuple, figsize: tuple = (12, 8), projection: ccrs = ccrs.Mercator()
 ) -> tuple:
     """
-    Format plot.
+    Initializes the base map figure with static elements.
 
     Args:
-        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
+    -----------
+        - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+        - figsize (tuple, optional): Figure size. Defaults to (12, 8).
+        - projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
 
     Returns:
-        tuple: Tuple containing:
+    -----------
         - fig (object): Figure object.
         - ax (object): Axis object.
     """
     lat_min, lon_min, lat_max, lon_max = extent
 
-    fig = plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=(12, 8))
     # leave some space for colorbar
-    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection=projection)
+    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection=ccrs.Mercator())
 
     cplt.create(
         [lon_min, lon_max, lat_min, lat_max],
         gridlines=True,
         ax=ax,
-        proj=projection,
+        proj=ccrs.Mercator(),
     )
 
     return fig, ax
 
 
-def plot_streamlines(
-    ax: object, ds: xr.Dataset, lon: np.ndarray, lat: np.ndarray, density: int = 4
-) -> object:
+def clear_fig(
+    fig: object,
+    total_flag: bool = False,
+    im: object = None,
+    legend: object = None,
+    cax=None,
+    quiver: object = None,
+) -> None:
     """
-    Plot current streamlines.
+    Clears the figure of all elements, leavning only the base map.
 
     Args:
-        ax (object): Axis object.
-        ds (xr.Dataset): xarray dataset containing current data.
-        lon (np.ndarray): 2D array of longitudes.
-        lat (np.ndarray): 2D array of latitudes.
-        density (int, optional): Density of streamlines. Defaults to 4.
+    -----------
+        - fig (object): Figure object.
+        - ax (object): Axis object.
+        - total_flag (bool): Flag for clearing all elements.
+        - im (object): Contourf plot object.
+        - quiver (object, optional): Quiver plot object. Defaults to None.
+        - cax (object, optional): Colorbar object. Defaults to None.
+        - legend (object, optional): Legend object. Defaults to None.
 
     Returns:
-        streamplot (object): Streamplot object.
+    -----------
+        - `None`
     """
-    u: xr.DataArray = ds["u"]
-    v: xr.DataArray = ds["v"]
-    # mag = ds["magnitude"]  # might not keep!
 
-    streamplot: object = ax.streamplot(
-        lon,
-        lat,
-        u,
-        v,
-        color="black",
-        linewidth=0.5,
-        arrowsize=0.5,
-        density=density,
-        transform=ccrs.PlateCarree(),
+    if total_flag:
+        fig.clear()
+
+        return
+
+    fig.texts = []
+
+    im.remove()
+
+    if quiver is not None:
+        quiver.remove()
+
+    if cax is not None:
+        cax.remove()
+
+    if legend is not None:
+        legend.remove()
+
+    return
+
+
+### Helper functions ###
+def coords_to_2D(data, text_name: str) -> tuple:
+    """
+    Converts lat/lon data to 2D arrays.
+
+    Args:
+    -----------
+        - data (Any): Data containing lat/lon data. Expected to be either an xarray Dataset or DataArray.
+        - text_name (str): Text name of dataset.
+
+    Returns:
+    -----------
+        - lon2D (np.ndarray): 2D array of longitude values.
+        - lat2D (np.ndarray): 2D array of latitude values.
+    """
+    if "RTOFS (East Coast)" and "RTOFS (Parallel)" in text_name:
+        # RTOFS already has 2D values for lat and lon
+        # Only applicable to RTOFS-RTOFS RMSD plots.
+        lon2D = data["lon"]
+        lat2D = data["lat"]
+    elif "RTOFS" in text_name:
+        # RTOFS already has 2D values for lat and lon
+        # Applicable to RTOFS magnitude and threshold plots.
+        lon2D = data["lon"]
+        lat2D = data["lat"]
+    else:
+        lon2D, lat2D = np.meshgrid(data.lon, data.lat)
+
+    return lon2D, lat2D
+
+
+def add_text(
+    fig: object, ax: object, plot_title: str, date: dt.datetime, text_name: str
+) -> None:
+    """
+    Adds text to figures.
+
+    Args:
+    ----------
+    - fig (object): Figure object
+    - ax (object): Axis object
+    - plot_title (str): Specific title for the plot.
+    - date (datetime): Date of data selection in MM-DD-YYYY HH:MM
+    - text_name (str): Properly formatted model name.
+
+    Returns
+    ---------
+    - `None`
+    """
+    # Code adapted from Sal
+    ax_pos = ax.get_position()
+    top = ax_pos.y1
+    bottom = ax_pos.y0
+
+    title_distance_top = 0.15
+    title_position = top + title_distance_top
+
+    subtitle_distance_title = 0.05
+    subtitle_position = title_position - subtitle_distance_title
+
+    tag_distance_bottom = 0.1
+    tag_position = bottom - tag_distance_bottom
+
+    fig.text(
+        0.5,
+        title_position,
+        plot_title,
+        fontsize=20,
+        fontweight="bold",
+        ha="center",
+        va="bottom",
     )
 
-    return streamplot
-
-
-def plot_quiver(
-    ax: object, ds: xr.Dataset, lon: np.ndarray, lat: np.ndarray, scalar: int = 2
-) -> object:
-    """
-    Plot current quiver.
-
-    Args:
-        ax (object): Axis object.
-        ds (xr.Dataset): xarray dataset containing current data.
-        lon (np.ndarray): 2D array of longitudes.
-        lat (np.ndarray): 2D array of latitudes.
-        scalar (int, optional): Scalar for subsampling data. Defaults to 2.
-
-    Returns:
-        quiver (object): Quiver plot object.
-    """
-    u: xr.DataArray = ds["u"]
-    v: xr.DataArray = ds["v"]
-
-    # subsample data to clean plot up
-    u_sub = u[::scalar, ::scalar]
-    v_sub = v[::scalar, ::scalar]
-    lon_sub = lon[::scalar, ::scalar]
-    lat_sub = lat[::scalar, ::scalar]
-
-    quiver = ax.quiver(
-        lon_sub,
-        lat_sub,
-        u_sub,
-        v_sub,
-        transform=ccrs.PlateCarree(),
+    subtitle_text = f"{date} UTC - {text_name}"
+    fig.text(
+        0.5, subtitle_position, subtitle_text, fontsize=18, ha="center", va="bottom"
     )
 
-    return quiver
+    tag_text = f"Generated by the Glider Guidance System (GGS)"
+    fig.text(
+        0.5,
+        tag_position,
+        tag_text,
+        fontsize=16,
+        ha="center",
+        va="top",
+        color="gray",
+    )
+
+    return
 
 
-def format_cbar(fig: object, ax: object, im: object, label: str) -> object:
+def create_cbar(fig: object, ax: object, im: object, label: str) -> object:
     """
-    Fomart colorbar depending on figure size.
+    Creates a colorbar. Colorbar is placed to the right of the plot on its own dedicated ax.
 
     Args:
-        fig (object): Figure object.
-        ax (object): Axis object.
-        im (object): Image object.
-        label (str): Label for colorbar.
+    -----------
+        - fig (object): Figure object.
+        - ax (object): Axis object.
+        - im (object): Image object.
+        - label (str): Label for colorbar.
 
     Returns:
-        cax (object): Colorbar object.
+    -----------
+        - cax (object): Colorbar object.
     """
     cax = fig.add_axes(
         [
@@ -139,154 +211,28 @@ def format_cbar(fig: object, ax: object, im: object, label: str) -> object:
         ]
     )
     plt.colorbar(im, cax=cax, label=label)
+
+    # return the cax object instead of the colorbar object because matplotlib is weird and gets mad when I do cbar.remove()
     return cax
 
 
-def plot_magnitude(
-    ds: xr.Dataset,
-    extent: tuple,
-    streamlines: bool = False,
-    density: int = 4,
-    quiver: bool = False,
-    scalar: int = 4,
-    extend: str = "max",
-    figsize: tuple = (12, 8),
-    projection=ccrs.Mercator(),
-    savefig: bool = False,
-) -> object:
+def create_thresholds_levels_legend(ax: object, magnitude: xr.DataArray) -> tuple:
     """
-    Plot current magnitudes.
+    Creates a legend for the threshold contours.
 
     Args:
-        ds (xr.Dataset): xarray dataset containing current data.
-        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        streamlines (bool, optional): Plot streamlines. Defaults to False.
-        density (int, optional): Density of streamlines. Defaults to 4.
-        quiver (bool, optional): Plot quiver. Defaults to False.
-        scalar (int, optional): Scalar for subsampling data. Defaults to 4.
-        extend (str, optional): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
-        figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
-        savefig (bool, optional): Save figure. Defaults to False.
+    -----------
+        - ax (object): Axis object.
+        - magnitude (xr.DataArray): Magnitude data.
 
     Returns:
-        fig (object): Figure object.
+    -----------
+        - levels (np.ndarray): Contour levels.
+        - colors (list): List of colors.
+        - legend (object): Legend object.
     """
-    model = ds.attrs["model"]
-    model_filename = ds.attrs["filename"]
-
-    print(f"{model}: Plotting magnitudes...")
-    starttime = print_starttime()
-
-    # Initialize plot
-    fig, ax = format_plot(extent, figsize=figsize, projection=projection)
-
-    # Create 2D values for lat and lon
-    if "RTOFS" in model:
-        lon2D = ds["lon"]  # RTOFS already has 2D values for lat and lon
-        lat2D = ds["lat"]
-    else:
-        lon2D, lat2D = np.meshgrid(ds.lon, ds.lat)  # create 2D values for lat and lon
-
-    levels = np.linspace(0, 0.9, 10)  # hardcoded for now, but should be dynamic?
-
-    # Plot
-    contourf = ax.contourf(
-        lon2D,
-        lat2D,
-        ds["magnitude"],
-        levels=levels,
-        extend=extend,
-        cmap=cmo.speed,
-        transform=ccrs.PlateCarree(),
-        vmin=0,
-        vmax=0.9,
-    )
-
-    # Add colorbar
-    label = r"velocity ($\mathregular{ms^{-1}}$)"
-    cbar = format_cbar(fig, ax, contourf, label)
-
-    # Plot streamlines or quiver
-    if streamlines:
-        plot_streamlines(ax, ds, lon2D, lat2D, density=density)
-        plot_type = "streamplot"
-    elif quiver:
-        plot_quiver(ax, ds, lon2D, lat2D, scalar=scalar)
-        plot_type = "quiverplot"
-    else:
-        print(
-            '"streamlines" and "quiver" were not set to True. Plotting magnitude only.'
-        )
-        plot_type = "none"
-
-    date = ds.time.dt.strftime("%Y-%m-%d-%H-%M").values
-    #  ^^^ keep until you do multiple times ^^^
-    ax.set_title(f"{model} {date} Depth Averaged Current Magnitude")
-
-    plt.tight_layout()
-
-    if savefig:
-        fdate = ds.time.dt.strftime("%Y%m%d-%H%M").values
-        filename = generate_filename(fdate, "magnitude", plot_type, model_filename)
-        save_fig(fig, filename)
-
-    # plt.show()
-
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return fig
-
-
-def plot_threshold(
-    ds: xr.Dataset,
-    extent: tuple,
-    streamlines: bool = False,
-    density: int = 4,
-    quiver: bool = False,
-    scalar: int = 4,
-    figsize: tuple = (12, 8),
-    projection=ccrs.Mercator(),
-    savefig: bool = False,
-) -> object:
-    """
-    Plot current thresholds.
-
-    Args:
-        ds (xr.Dataset): xarray dataset containing current data.
-        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        streamlines (bool, optional): Plot streamlines. Defaults to False.
-        density (int, optional): Density of streamlines. Defaults to 4.
-        quiver (bool, optional): Plot quiver. Defaults to False.
-        scalar (int, optional): Scalar for subsampling data. Defaults to 4.
-        figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
-        savefig (bool, optional): Save figure. Defaults to False.
-
-    Returns:
-        fig (object): Figure object.
-    """
-    model = ds.attrs["model"]
-    model_filename = ds.attrs["filename"]
-
-    print(f"{model}: Plotting Thresholds...")
-    starttime = print_starttime()
-
-    # Initialize plot
-    fig, ax = format_plot(extent, figsize=figsize, projection=projection)
-
-    # Create 2D values for lat and lon
-    if "RTOFS" in ds.attrs["model"]:
-        lon2D = ds["lon"]  # RTOFS already has 2D values for lat and lon
-        lat2D = ds["lat"]
-    else:
-        lon2D, lat2D = np.meshgrid(ds.lon, ds.lat)  # create 2D values for lat and lon
-
-    # Generate levels and labels. Dynamic with magnitude data.
-    mag = ds["magnitude"]
-    max_mag = np.nanmax(mag)
+    # code adapted from Sal's code and consolidated with the help of ChatGPT and Codeium
+    max_mag = np.nanmax(magnitude)
     max_label = f"{max_mag:.2f}"  # converts to string with 2 decimal places
     mags = [0, 0.2, 0.3, 0.4, 0.5]  # hardcoded for now
     colors = ["none", "yellow", "orange", "orangered", "maroon", "maroon"]
@@ -297,10 +243,11 @@ def plot_threshold(
         if mag_value < max_mag:
             levels.append(mag_value)
         if i > 0 and mag_value <= max_mag:
+            # this is so hacky but it works ({}{}{{{{how bout 'em?}}}})
             labels.append(rf"{mags[i-1]} - {mag_value} $\mathregular{{ms^{{-1}}}}$")
     if max_mag > mags[-1]:
         levels.append(max_mag)
-        labels.append(rf"{mags[-1]} - {max_label} $\mathregular{{ms^{{-1}}}}$")  # lol
+        labels.append(rf"{mags[-1]} - {max_label} $\mathregular{{ms^{{-1}}}}$")
 
     colors = colors[: len(levels)]
 
@@ -312,192 +259,404 @@ def plot_threshold(
     labels = labels[1:]
     patches = patches[1:]
 
-    contourf = ax.contourf(
-        lon2D,
-        lat2D,
-        mag,
-        levels=levels,
-        extend="max",
-        colors=colors,
-        transform=ccrs.PlateCarree(),
-    )
-
-    if streamlines:
-        plot_streamlines(ax, ds, lon2D, lat2D, density=density)
-        plot_type = "streamplot"
-    elif quiver:
-        plot_quiver(ax, ds, lon2D, lat2D, scalar=scalar)
-        plot_type = "quiverplot"
-    else:
-        print(
-            '"streamlines" and "quiver" were not set to True. Plotting magnitude only.'
-        )
-        plot_type = "none"
-
-    legend = plt.legend(handles=patches, loc="best")
+    legend = ax.legend(handles=patches, loc="best")
     legend.set_zorder(100)
 
-    model = ds.attrs["model"]
-    date = ds.time.dt.strftime("%Y-%m-%d-%H-%M").values
-    # ^^^ keep until you do multiple times ^^^
-    ax.set_title(f"{model} {date} Depth Averaged Current Magnitude Thresholds")
-
-    plt.tight_layout()
-
-    if savefig:
-        fdate = ds.time.dt.strftime("%Y%m%d-%H%M").values
-        filename = generate_filename(fdate, "threshold", plot_type, model_filename)
-        save_fig(fig, filename)
-
-    # plt.show()
-
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return fig
+    return levels, colors, legend
 
 
-def plot_rmsd(
-    da: xr.DataArray,
-    extent: tuple,
-    figsize: tuple = (12, 8),
-    projection=ccrs.Mercator(),
-    savefig: bool = False,
+def create_glider_path(): ...  # TODO: Here!
+
+
+def create_quiverplot(
+    ax: object,
+    ds: xr.Dataset,
+    lon2D: np.ndarray,
+    lat2D: np.ndarray,
+    scalar: int,
+    **kwargs,
 ) -> object:
     """
-    Plot Room Mean Square Difference (RMSD).
+    Creates a quiver plot.
 
     Args:
-        da (xr.DataArray): xarray dataset containing RMSD data.
-        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
-        savefig (bool, optional): Save figure. Defaults to False.
+    -----------
+        - ax (object): Axis object.
+        - ds (xr.Dataset): xarray dataset containing current data.
+        - lon2D (np.ndarray): 2D array of longitudes.
+        - lat2D (np.ndarray): 2D array of latitudes.
+        - scalar (int): Scalar for subsampling data. A larger scalar results in quivers that are less dense.
 
     Returns:
-        fig (object): Figure object.
+    -----------
+        - quiver (object): Quiver plot object.
+
+    Other Parameters:
+    -----------
+        - **kwargs: Additional keyword arguments to pass to the quiver function.
     """
-    models = da.attrs["model"]
-    model_filename = da.attrs["filename"]
+    u: xr.DataArray = ds["u"]
+    v: xr.DataArray = ds["v"]
 
-    print(f"{models}: Plotting RMSD...")
-    starttime = print_starttime()
+    # subsample data to clean plot up
+    u_sub = u[::scalar, ::scalar]
+    v_sub = v[::scalar, ::scalar]
+    lon_sub = lon2D[::scalar, ::scalar]
+    lat_sub = lat2D[::scalar, ::scalar]
 
-    # Initialize plot
-    fig, ax = format_plot(extent, figsize=figsize, projection=projection)
+    u_sub = u_sub.values
+    v_sub = v_sub.values
 
-    # Create 2D values for lat and lon
-    if "RTOFS (East Coast)" and "RTOFS (Parallel)" in models:
-        # RTOFS already has 2D values for lat and lon
-        # Only applicable to RTOFS-RTOFS RMSDs.
-        lon2D = da["lon"]
-        lat2D = da["lat"]
-    else:
-        lon2D, lat2D = np.meshgrid(da.lon, da.lat)
-
-    levels = 10  # for now
-
-    # Plot
-    contourf = ax.contourf(
-        lon2D,
-        lat2D,
-        da.values,
-        levels=levels,
-        cmap=cmo.deep,
+    # create quiver plot
+    quiver = ax.quiver(
+        lon_sub,
+        lat_sub,
+        u_sub,
+        v_sub,
+        color="black",
         transform=ccrs.PlateCarree(),
+        **kwargs,
     )
 
-    # Add colorbar
-    label = r"RMSD ($\mathregular{ms^{-1}}$)"
-    cbar = format_cbar(fig, ax, contourf, label)
-
-    date = da.time.dt.strftime("%Y-%m-%d-%H-%M").values  # for now
-
-    ax.set_title(f"{models} {date} Root Mean Square Difference (RMSD)")
-
-    plt.tight_layout()
-
-    if savefig:
-        fdate = da.time.dt.strftime("%Y%m%d-%H%M").values
-        filename = generate_filename(fdate, "rmsd", "none", model_filename)
-        save_fig(fig, filename)
-
-    # plt.show()
-
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return fig
+    return quiver
 
 
-def plot_mad(
-    da: xr.DataArray,
-    extent: tuple,
-    figsize: tuple = (12, 8),
-    projection=ccrs.Mercator(),
-    savefig: bool = False,
+def create_streamplot(
+    ax: object,
+    ds: xr.Dataset,
+    lon2D: np.ndarray,
+    lat2D: np.ndarray,
+    density: int = 4,
+    **kwargs,
 ) -> object:
     """
-    Plot Mean Absolute Difference (MAD).
+    Creates a streamplot.
 
     Args:
-        da (xr.DataArray): xarray dataset containing MAD data.
-        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        figsize (tuple, optional): Figure size. Defaults to (12, 8).
-        projection (ccrs, optional): Projection. Defaults to ccrs.Mercator().
-        savefig (bool, optional): Save figure. Defaults to False.
+    -----------
+        - ax (object): Axis object.
+        - ds (xr.Dataset): xarray dataset containing current data.
+        - lon2D (np.ndarray): 2D array of longitudes.
+        - lat2D (np.ndarray): 2D array of latitudes.
+        - density (int): Density of streamlines. Defaults to 4.
+        - linewidth (float): Width of streamlines. Defaults to 0.5.
+        - arrowsize (float): Size of arrows. Defaults to 0.5.
 
     Returns:
-        fig (object): Figure object.
+    -----------
+        - streamplot (object): Streamplot object.
+
+    Other Parameters:
+    -----------
+        - **kwargs: Additional keyword arguments for `ax.streamplot`. See the documentation for StreamplotSet.
     """
-    model = da.attrs["model"]
+    u: xr.DataArray = ds["u"]
+    v: xr.DataArray = ds["v"]
 
-    print(f"{model}: Plotting MAD...")
-    starttime = print_starttime()
-
-    # Initialize plot
-    fig, ax = format_plot(extent, figsize=figsize, projection=projection)
-
-    # Create 2D values for lat and lon
-    if "RTOFS (East Coast)" and "RTOFS (Parallel)" in model:
-        # RTOFS already has 2D values for lat and lon
-        # Only applicable to RTOFS-RTOFS RMSDs.
-        lon2D = da["lon"]
-        lat2D = da["lat"]
-    else:
-        lon2D, lat2D = np.meshgrid(da.lon, da.lat)
-
-    levels = 10  # for now
-
-    # Plot
-    contourf = plt.contourf(
+    streamplot = ax.streamplot(
         lon2D,
         lat2D,
-        da.values,
-        levels=levels,
-        cmap=cmo.deep,
+        u,
+        v,
+        density=density,
+        color="black",
         transform=ccrs.PlateCarree(),
+        **kwargs,
     )
 
-    # Add colorbar
-    label = r"MAD ($\mathregular{ms^{-1}}$)"
-    cbar = format_cbar(fig, ax, contourf, label)
+    return streamplot
 
-    date = da.time.dt.strftime("%Y-%m-%d-%H-%M").values  # for now
 
-    ax.set_title(f"{model} {date} Mean Absolute Difference (MAD)")
+def create_magnitude_contours(
+    ax: object,
+    magnitude: xr.DataArray,
+    lon2D: np.ndarray,
+    lat2D: np.ndarray,
+    levels: np.ndarray,
+    extend: str = "max",
+    **kwargs,
+) -> object:
+    """
+    Creates a magnitude contour plot.
 
-    plt.tight_layout()
+    Args:
+    -----------
+        - ax (object): Axis object.
+        - magnitude (xr.DataArray): Magnitude data.
+        - lon2D (np.ndarray): 2D array of longitudes.
+        - lat2D (np.ndarray): 2D array of latitudes.
+        - levels (np.ndarray): Contour levels.
+        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
 
-    if savefig:
-        save_fig(fig, f"{model}_mad")
+    Returns:
+    -----------
+        - im (object): Image object.
 
-    # plt.show()
+    Other Parameters:
+    -----------
+        - **kwargs: Additional keyword arguments to pass to the contourf function.
+    """
+    im = ax.contourf(
+        lon2D,
+        lat2D,
+        magnitude,
+        levels=levels,
+        extend=extend,
+        cmap=cmo.speed,
+        transform=ccrs.PlateCarree(),
+        vmin=0,
+        vmax=0.9,
+        **kwargs,
+    )
 
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    return im
 
-    return fig
+
+def create_threshold_contours(
+    ax: object,
+    magnitude: xr.DataArray,
+    lon2D: np.ndarray,
+    lat2D: np.ndarray,
+    levels: list,
+    colors: list,
+    extend: str = "max",
+    **kwargs,
+) -> object:
+    """
+    Creates a threshold contour plot.
+
+    Args:
+    -----------
+        - ax (object): Axis object.
+        - magnitude (xr.DataArray): Magnitude data.
+        - lon2D (np.ndarray): 2D array of longitudes.
+        - lat2D (np.ndarray): 2D array of latitudes.
+        - levels (np.ndarray): Contour levels.
+        - colors (list): List of colors.
+        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
+
+    Returns:
+    -----------
+        - im (object): Image object.
+
+    Other Parameters:
+    -----------
+        - **kwargs: Additional keyword arguments to pass to the contourf function.
+    """
+    im = ax.contourf(
+        lon2D,
+        lat2D,
+        magnitude,
+        levels=levels,
+        extend=extend,
+        colors=colors,
+        transform=ccrs.PlateCarree(),
+        **kwargs,
+    )
+
+    return im
+
+
+def create_rmsd_contours(
+    ax: object,
+    rmsd: xr.DataArray,
+    lon2D: np.ndarray,
+    lat2D: np.ndarray,
+    levels: np.ndarray,
+    extend: str = "max",
+    **kwargs,
+) -> object:
+    """
+    Creates a RMSD contour plot.
+
+    Args:
+    -----------
+        - ax (object): Axis object.
+        - rmsd (xr.DataArray): RMSD data.
+        - lon2D (np.ndarray): 2D array of longitudes.
+        - lat2D (np.ndarray): 2D array of latitudes.
+        - levels (np.ndarray): Contour levels.
+        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
+
+    Returns:
+    -----------
+        - im (object): Image object.
+
+    Other Parameters:
+    -----------
+        - **kwargs: Additional keyword arguments to pass to the contourf function.
+    """
+    im = ax.contourf(
+        lon2D,
+        lat2D,
+        rmsd,
+        levels=levels,
+        extend=extend,
+        cmap=cmo.deep,
+        vmin=0,
+        vmax=0.9,
+        transform=ccrs.PlateCarree(),
+        **kwargs,
+    )
+
+    return im
+
+
+# Plotting function
+def populate_fig(
+    contour_type: str,
+    vector_type: str,
+    fig: object,
+    ax: object,
+    data: xr.DataArray,
+    density: int = 5,
+    scalar: int = 4,
+    **kwargs,
+) -> tuple:
+    """
+    Populates a figure with contours and/or vectors.
+
+    Args:
+    -----------
+    - contour_type (str): Type of contour (e.g., 'magnitude', 'threshold', 'rmsd').
+    - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
+    - fig (object): Figure object.
+    - ax (object): Axis object.
+    - data (DataArray): Data to be plotted.
+    - density (int): Density of streamlines. Defaults to 5.
+    - scalar (int): Scalar for subsampling data. Defaults to 4.
+
+    Returns:
+    -----------
+    - contourf (object): Contourf object.
+    - legend (object): Legend object.
+    - cax (object): Colorbar object.
+    - quiver (object): Quiver object.
+    - streamplot (object): Streamplot object.
+
+    Other Parameters
+    ----------
+    - **kwargs: Additional keyword arguments to pass to the plotting functions.
+    """
+    contourf = None
+    legend = None
+    cax = None
+    quiver = None
+    streamplot = None
+
+    text_name = data.attrs["text_name"]
+    lon2D, lat2D = coords_to_2D(data, text_name)
+
+    # Create contours.
+    if contour_type == "magnitude":
+        plot_title = "Depth Averaged Current Magnitudes"
+        magnitude = data.magnitude
+        label = r"Magnitude ($\mathregular{ms^{-1}}$)"
+        levels = np.linspace(0, 0.9, 10)
+        contourf = create_magnitude_contours(ax, magnitude, lon2D, lat2D, levels)
+        cax = create_cbar(fig, ax, contourf, label)
+    elif contour_type == "rmsd":
+        # data should be an xr.dataarray
+        plot_title = "Depth Averaged Root Mean Square Differences (RMSD)"
+        label = r"RMSD ($\mathregular{ms^{-1}}$)"
+        levels = np.linspace(0, 0.9, 10)
+        contourf = create_rmsd_contours(ax, data, lon2D, lat2D, levels)
+        cax = create_cbar(fig, ax, contourf, label)
+    elif contour_type == "threshold":
+        plot_title = "Depth Averaged Current Thresholds"
+        magnitude = data.magnitude
+        levels, colors, legend = create_thresholds_levels_legend(ax, magnitude)
+        contourf = create_threshold_contours(
+            ax, magnitude, lon2D, lat2D, levels, colors
+        )
+    else:
+        raise ValueError(
+            f"Invalid contour type: {contour_type}. Please choose 'magnitude', 'threshold', or 'rmsd'."
+        )
+
+    # Create vectors
+    if vector_type == "quiver":
+        quiver = create_quiverplot(ax, data, lon2D, lat2D, scalar=scalar, **kwargs)
+    elif vector_type == "streamplot":
+        streamplot = create_streamplot(
+            ax, data, lon2D, lat2D, density=density, **kwargs
+        )
+    elif vector_type == None:
+        pass
+    else:
+        raise ValueError(
+            f"Invalid vector type: {vector_type}. Please choose 'quiver', 'streamplot', or None."
+        )
+
+    # TODO: Add optimized glider path plotting call here
+
+    # Add plot title and text
+    date = data.time.dt.strftime("%Y-%m-%d %H:%M").values
+    add_text(fig, ax, plot_title, date, text_name)
+
+    return contourf, legend, cax, quiver, streamplot
+
+
+# Smart plotting functions
+def create_map(
+    data: xr.DataArray,
+    extent: tuple,
+    contour_type: str,
+    vector_type: str,
+    density: int = 4,
+    scalar: int = 4,
+    initialize: bool = True,
+    save: bool = False,
+    **kwargs,
+) -> tuple:
+    """
+    Creates a map.
+
+    Args:
+    ----------
+    - data (DataArray): Data to be plotted.
+    - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+    - contour_type (str): Type of contour (e.g., 'magnitude', 'threshold', 'rmsd').
+    - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
+    - density (int): Density of streamlines. Defaults to 5.
+    - scalar (int): Scalar for subsampling data. Defaults to 4.
+    - initialize (bool): Determines if a new figure will be initialized. Defaults to False.
+    - save (bool): Determines if the figure will be saved to a file. Defaults to False. If set to True, figures will be saved to the /figures directory.
+
+    Returns:
+    ----------
+    - contourf (object): Contourf object.
+    - legend (object): Legend object.
+    - cax (object): Colorbar object.
+    - quiver (object): Quiver object.
+    - streamplot (object): Streamplot object.
+
+    Other Parameters:
+    ----------
+    - **kwargs: Additional keyword arguments to pass to the plotting functions.
+    """
+    if initialize:
+        fig, ax = initialize_fig(extent)
+    else:
+        fig = plt.gcf()
+        ax = fig.get_axes()[0]
+
+    # TODO: update call to include optimized path
+    contourf, legend, cax, quiver, streamplot = populate_fig(
+        contour_type,
+        vector_type,
+        fig,
+        ax,
+        data,
+        density=density,
+        scalar=scalar,
+        linewidth=0.5,
+    )
+
+    if save:
+        model_name = data.attrs["model_name"]
+        fdate = data.time.dt.strftime("%Y%m%d%H").values
+        filename = generate_filename(fdate, contour_type, vector_type, model_name)
+        save_fig(fig, filename)
+
+    return fig, contourf, legend, cax, quiver, streamplot

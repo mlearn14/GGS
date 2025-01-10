@@ -50,8 +50,8 @@ class CMEMS:
         # rename variables for consistency across all datasets
         ds = ds.rename({"longitude": "lon", "latitude": "lat", "uo": "u", "vo": "v"})
 
-        ds.attrs["model"] = "CMEMS"
-        ds.attrs["filename"] = "CMEMS"
+        ds.attrs["text_name"] = "CMEMS"
+        ds.attrs["model_name"] = "CMEMS"
 
         self.raw_data = ds  # keeps the raw data just in case
 
@@ -60,24 +60,19 @@ class CMEMS:
         print_runtime(starttime, endtime)
         print()
 
-    def subset(
-        self,
-        dates: tuple,
-        extent: tuple,
-        depth: int = 1100,
-    ) -> None:
+    def subset(self, dates: tuple, extent: tuple, depth: int = 1100) -> None:
         """
         Subsets the CMEMS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
 
         Args:
             dates (tuple): A tuple of (date_min, date_max) in datetime format.
             extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-            depth (float): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
+            depth (int): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
 
         Returns:
             None
         """
-        model = self.raw_data.attrs["model"]
+        text_name = self.raw_data.attrs["text_name"]
 
         # unpack the dates and extent tuples
         date_min, date_max = dates
@@ -93,7 +88,7 @@ class CMEMS:
 
         self.subset_data = self.subset_data.chunk("auto")
 
-        print(f"{model}: Subsetted data.\n")
+        print(f"{text_name}: Subsetted data.\n")
 
 
 class ESPC:
@@ -136,8 +131,8 @@ class ESPC:
         ds = ds.assign_coords(lon=(ds.lon - 180) % 360 - 180)
         ds = ds.sortby("lon")
 
-        ds.attrs["model"] = "ESPC"
-        ds.attrs["filename"] = "ESPC"
+        ds.attrs["text_name"] = "ESPC"
+        ds.attrs["model_name"] = "ESPC"
 
         self.raw_data = ds
 
@@ -146,25 +141,20 @@ class ESPC:
         print_runtime(starttime, endtime)
         print()
 
-    def subset(
-        self,
-        dates: tuple,
-        extent: tuple,
-        depth: float = 1000,
-    ) -> None:
+    def subset(self, dates: tuple, extent: tuple, depth: int = 1000) -> None:
         """
         Subsets the ESPC dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
 
         Args:
             dates (tuple): A tuple of (date_min, date_max) in datetime format.
             extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-            depth (float): The maximum depth in meters. Defaults to 1000.
+            depth (int): The maximum depth in meters. Defaults to 1000.
 
         Returns:
             None
         """
         # unpack the dates and extent tuples
-        model = self.raw_data.attrs["model"]
+        text_name = self.raw_data.attrs["text_name"]
 
         date_min, date_max = dates
         lat_min, lon_min, lat_max, lon_max = extent
@@ -179,7 +169,7 @@ class ESPC:
 
         self.subset_data = self.subset_data.chunk("auto")
 
-        print(f"{model}: Subsetted data.\n")
+        print(f"{text_name}: Subsetted data.\n")
 
 
 class RTOFS:
@@ -224,14 +214,14 @@ class RTOFS:
         }
 
         # Create a dictionary mapping source names to model names
-        model_dict = {
+        text_dict = {
             "east": "RTOFS (East Coast)",
             "west": "RTOFS (West Coast)",
             "parallel": "RTOFS (Parallel)",
         }
 
         # Create a dictionary mapping source names to model names formatted for filenames
-        filename_dict = {
+        model_dict = {
             "east": "RTOFS-east",
             "west": "RTOFS-west",
             "parallel": "RTOFS-parallel",
@@ -245,8 +235,8 @@ class RTOFS:
 
         # Get the URL and model name from the dictionaries
         url = url_dict[source]
-        model = model_dict[source]
-        filename = filename_dict[source]
+        text_name = text_dict[source]
+        model_name = model_dict[source]
 
         # Open the dataset using xarray
         ds = xr.open_dataset(url)
@@ -266,11 +256,11 @@ class RTOFS:
         # ds = ds.set_coords(["lon", "lat"])  # set lon and lat as coordinates
 
         # Add the model name as an attribute to the dataset
-        ds.attrs["model"] = model
-        print(f"Model source: {model}")
+        ds.attrs["text_name"] = text_name
+        print(f"Model source: {text_name}")
 
         # Add the filename as an attribute to the dataset
-        ds.attrs["filename"] = filename
+        ds.attrs["model_name"] = model_name
 
         # Store the dataset in the instance variable
         self.raw_data = ds
@@ -280,20 +270,20 @@ class RTOFS:
         print_runtime(starttime, endtime)
         print()
 
-    def subset(self, dates: tuple, extent: tuple, depth: float = 1000) -> None:
+    def subset(self, dates: tuple, extent: tuple, depth: int = 1000) -> None:
         """
         Subsets the RTOFS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.subset_data attribute.
 
         Args:
             dates (tuple): A tuple of (date_min, date_max) in datetime format.
             extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-            depth (float): The maximum depth in meters. Defaults to 1000.
+            depth (int): The maximum depth in meters. Defaults to 1000.
 
         Returns:
             None
         """
         # unpack the dates and extent tuples
-        model = self.raw_data.attrs["model"]
+        text_name = self.raw_data.attrs["text_name"]
 
         date_min, date_max = dates
         lat_min, lon_min, lat_max, lon_max = extent
@@ -331,4 +321,4 @@ class RTOFS:
 
         self.subset_data = self.subset_data.chunk("auto")
 
-        print(f"{model}: Subsetted data.\n")
+        print(f"{text_name}: Subsetted data.\n")
