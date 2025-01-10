@@ -3,6 +3,8 @@ data/*
 figures/*
 Oceanshot_Figure_Generator.ipynb
 streamlit_test.py
+streamlit_functions.py
+balh.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
