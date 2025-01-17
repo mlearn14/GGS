@@ -10,11 +10,8 @@ import streamlit as st  # for later
 
 from functions import *
 
-# TODO: add plotting function for optimized path. Then add it to the create_map function.
-
 
 ### Plotting initialization ###
-@st.cache_data
 def initialize_fig(
     extent: tuple, figsize: tuple = (12, 8), projection: ccrs = ccrs.Mercator()
 ) -> tuple:
@@ -259,13 +256,68 @@ def create_thresholds_levels_legend(ax: object, magnitude: xr.DataArray) -> tupl
     labels = labels[1:]
     patches = patches[1:]
 
-    legend = ax.legend(handles=patches, loc="best")
+    legend = ax.legend(handles=patches)
     legend.set_zorder(100)
 
     return levels, colors, legend
 
 
-def create_glider_path(): ...  # TODO: Here!
+def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
+    """
+    Creates a scatter plot of the glider path.
+
+    Args:
+    -----------
+        - ax (object): Axis object.
+        - path (list): List of tuples of glider positions.
+        - waypoints (list): List of tuples of waypoints.
+
+    Returns:
+    -----------
+        - path_plot (object): Path plot object.
+        - wp_plot (object): Waypoint plot object.
+    """
+
+    def format_coords(coords: list) -> tuple:
+        """
+        Formats coordinates into a tuple of latitudes and longitudes.
+
+        Args:
+        -----------
+            - coords (list): List of coordinates as tuples: (lat, lon).
+
+        Returns:
+        -----------
+            - lat (list): List of latitudes.
+            - lon (list): List of longitudes.
+        """
+        lat = [coord[0] for coord in coords]
+        lon = [coord[1] for coord in coords]
+        return lat, lon
+
+    # separate lons and lats
+    wp_lats, wp_lons = format_coords(waypoints)
+    path_lats, path_lons = format_coords(path)
+
+    # create plots of glider path, with waypoints plotted over in red
+    path_plot = ax.plot(
+        path_lons,
+        path_lats,
+        linestyle="-",
+        marker="o",
+        color="black",
+        markersize=4,
+        transform=ccrs.PlateCarree(),
+    )
+    wp_plot = ax.scatter(
+        wp_lons,
+        wp_lats,
+        color="purple",
+        transform=ccrs.PlateCarree(),
+        zorder=50,
+    )
+
+    return path_plot, wp_plot
 
 
 def create_quiverplot(
@@ -295,6 +347,7 @@ def create_quiverplot(
     -----------
         - **kwargs: Additional keyword arguments to pass to the quiver function.
     """
+    # FIXME: does not work with RTOFS data, even when regridded
     u: xr.DataArray = ds["u"]
     v: xr.DataArray = ds["v"]
 
@@ -508,9 +561,11 @@ def populate_fig(
     vector_type: str,
     fig: object,
     ax: object,
-    data: xr.DataArray,
+    data,
     density: int = 5,
     scalar: int = 4,
+    optimized_path: list = None,
+    waypoints: list = None,
     **kwargs,
 ) -> tuple:
     """
@@ -522,9 +577,11 @@ def populate_fig(
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
     - fig (object): Figure object.
     - ax (object): Axis object.
-    - data (DataArray): Data to be plotted.
+    - data: Data to be plotted.
     - density (int): Density of streamlines. Defaults to 5.
     - scalar (int): Scalar for subsampling data. Defaults to 4.
+    - optimized_path (list): List of optimized path.
+    - waypoints (list): List of waypoints.
 
     Returns:
     -----------
@@ -533,6 +590,8 @@ def populate_fig(
     - cax (object): Colorbar object.
     - quiver (object): Quiver object.
     - streamplot (object): Streamplot object.
+    - path_plot (object): Optimized path plot object.
+    - waypoint_plot (object): Waypoint plot object.
 
     Other Parameters
     ----------
@@ -588,23 +647,30 @@ def populate_fig(
             f"Invalid vector type: {vector_type}. Please choose 'quiver', 'streamplot', or None."
         )
 
-    # TODO: Add optimized glider path plotting call here
+    # Add optimized glider path
+    if optimized_path and waypoints is not None:
+        path_plot, wp_plot = create_glider_path(ax, optimized_path, waypoints)
+    else:
+        path_plot = None
+        wp_plot = None
 
     # Add plot title and text
     date = data.time.dt.strftime("%Y-%m-%d %H:%M").values
     add_text(fig, ax, plot_title, date, text_name)
 
-    return contourf, legend, cax, quiver, streamplot
+    return contourf, legend, cax, quiver, streamplot, path_plot, wp_plot
 
 
 # Smart plotting functions
 def create_map(
-    data: xr.DataArray,
+    data,
     extent: tuple,
     contour_type: str,
     vector_type: str,
     density: int = 4,
     scalar: int = 4,
+    optimized_path: list = None,
+    waypoints: list = None,
     initialize: bool = True,
     save: bool = False,
     **kwargs,
@@ -614,35 +680,58 @@ def create_map(
 
     Args:
     ----------
-    - data (DataArray): Data to be plotted.
+    - data: Data to be plotted.
     - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
     - contour_type (str): Type of contour (e.g., 'magnitude', 'threshold', 'rmsd').
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
     - density (int): Density of streamlines. Defaults to 5.
     - scalar (int): Scalar for subsampling data. Defaults to 4.
+    - optimized_path (list): List of optimized glider paths (e.g., [path1, path2, ...]).
+    - waypoints (list): List of waypoints (e.g., [waypoint1, waypoint2, ...]).
     - initialize (bool): Determines if a new figure will be initialized. Defaults to False.
     - save (bool): Determines if the figure will be saved to a file. Defaults to False. If set to True, figures will be saved to the /figures directory.
 
     Returns:
     ----------
+    - fig (object): Figure object.
     - contourf (object): Contourf object.
     - legend (object): Legend object.
     - cax (object): Colorbar object.
     - quiver (object): Quiver object.
     - streamplot (object): Streamplot object.
+    - path_plot (object): Optimized path plot object.
+    - waypoint_plot (object): Waypoint plot object.
 
     Other Parameters:
     ----------
     - **kwargs: Additional keyword arguments to pass to the plotting functions.
     """
+    text_name = data.attrs["text_name"]
+
+    if vector_type == "quiver":
+        vector_text = "quiver"
+    elif vector_type == "streamplot":
+        vector_text = "streamline"
+    elif vector_type == None:
+        vector_text = "vectorless"
+
+    if contour_type == "rmsd":
+        contour_text = "RMSD"
+    else:
+        contour_text = contour_type
+
+    print(
+        f"{text_name}: Creating {vector_text} plot of depth averaged current {contour_type}s..."
+    )
+    starttime = print_starttime()
+
     if initialize:
         fig, ax = initialize_fig(extent)
     else:
         fig = plt.gcf()
         ax = fig.get_axes()[0]
 
-    # TODO: update call to include optimized path
-    contourf, legend, cax, quiver, streamplot = populate_fig(
+    contourf, legend, cax, quiver, streamplot, path_plot, wp_plot = populate_fig(
         contour_type,
         vector_type,
         fig,
@@ -650,7 +739,10 @@ def create_map(
         data,
         density=density,
         scalar=scalar,
+        optimized_path=optimized_path,
+        waypoints=waypoints,
         linewidth=0.5,
+        **kwargs,
     )
 
     if save:
@@ -659,4 +751,9 @@ def create_map(
         filename = generate_filename(fdate, contour_type, vector_type, model_name)
         save_fig(fig, filename)
 
-    return fig, contourf, legend, cax, quiver, streamplot
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
+    return fig, contourf, legend, cax, quiver, streamplot, path_plot, wp_plot

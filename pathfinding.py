@@ -10,20 +10,20 @@ from functions import *
 
 
 def compute_a_star_path(
-    waypoints_list: list, model: object, glider_raw_speed: float = 0.5
+    waypoints_list: list, ds: object, glider_raw_speed: float = 0.5
 ) -> list:
     """
     Calculates the optimal path between waypoints for a mission, considering the impact of ocean currents and distance.
 
     Args:
     ----------
-    waypoints_list (list[(lat, lon)]): A list of latitude and longitude tuples representing the waypoints.
-    model (object): An object representing the ocean currents model.
-    glider_raw_speed (float, optional): The glider's base speed in meters per second. Defaults to 0.5.
+        - waypoints_list (list[(lat, lon)]): A list of latitude and longitude tuples representing the waypoints.
+        - ds (DataSet): An xarray dataset containing depth-averaged ocean current data.
+        - glider_raw_speed (float, optional): The glider's base speed in meters per second. Defaults to 0.5.
 
     Returns:
     ----------
-    optimal_mission_path (list): A list of latitude and longitude tuples representing the optimal route.
+        - optimal_mission_path (list): A list of latitude and longitude tuples representing the optimal route.
     """
     # Code adapted from Salvatore Fricano. Updated to match current code structure of GGS.
 
@@ -166,7 +166,7 @@ def compute_a_star_path(
         end_lat, end_lon = grid_to_coord(*end_index, lat_array, lon_array)
         path = [(start_lat, start_lon), (end_lat, end_lon)]
 
-        distance = haversine_distance(start_lon, start_lat, end_lon, end_lat)
+        distance = haversine_distance(start_lat, start_lon, end_lat, end_lon)
         time = distance / glider_raw_speed
 
         return path, time, distance
@@ -226,7 +226,7 @@ def compute_a_star_path(
         net_speed = max(net_speed, 0.1)
 
         # Calculate the distance from the start to the end point
-        distance = haversine_distance(start_lon, start_lat, end_lon, end_lat)
+        distance = haversine_distance(start_lat, start_lon, end_lat, end_lon)
 
         # Calculate the time cost by dividing the distance by the net speed
         time = distance / net_speed
@@ -256,7 +256,7 @@ def compute_a_star_path(
         inst_lat, inst_lon = grid_to_coord(*inst_index, lat_array, lon_array)
         goal_lat, goal_lon = grid_to_coord(*goal_index, lat_array, lon_array)
 
-        heuristic_cost = haversine_distance(inst_lon, inst_lat, goal_lon, goal_lat)
+        heuristic_cost = haversine_distance(inst_lat, inst_lon, goal_lat, goal_lon)
 
         return heuristic_cost
 
@@ -331,82 +331,62 @@ def compute_a_star_path(
             - time (float): Time cost of the optimal path in seconds.
             - distance (float): Distance cost of the optimal path in meters.
         """
-
         # Initialize the A* algorithm
         open_set = [
             (
-                # Calculate the heuristic cost from the start index to the end index
                 calculate_heuristic_cost(start_idx, end_idx, lat_array, lon_array),
                 start_idx,
             )
         ]
-
-        # Create a dictionary to store the came_from information for each index
         came_from = {start_idx: None}
-
-        # Create a dictionary to store the g_score (cost from start to index) for each index
         g_score = {start_idx: 0}
-
-        # Create a dictionary to store the f_score (cost from start to index + heuristic cost from index to goal) for each index
-        f_score = {start_idx: calculate_heuristic_cost(start_idx, end_idx)}
-
-        # Initialize a flag to indicate if a path has been found
+        f_score = {
+            start_idx: calculate_heuristic_cost(
+                start_idx, end_idx, lat_array, lon_array
+            )
+        }
         path_found = False
 
         # Loop through the open set until it is empty
         while open_set:
-            # Get the index with the lowest f_score from the open set
             _, current = heapq.heappop(open_set)
 
-            # If the current index is the end index, then the path has been found
             if current == end_idx:
                 path_found = True
                 break
 
-            # Loop through all the neighbors of the current index
             for neighbor in generate_neighbors(current, lat_array, lon_array):
-                # Calculate the tentative g_score for the neighbor
                 tent_g_score = (
                     g_score[current]
-                    + calculate_movement(ds, current, neighbor, glider_raw_speed)[1]
+                    + calculate_movement(
+                        ds, current, neighbor, lat_array, lon_array, glider_raw_speed
+                    )[1]
                 )
 
-                # If the tentative g_score is less than the current g_score for the neighbor,
-                # then update the g_score and came_from information for the neighbor
                 if tent_g_score < g_score.get(neighbor, float("inf")):
                     came_from[neighbor] = current
                     g_score[neighbor] = tent_g_score
                     f_score[neighbor] = tent_g_score + calculate_heuristic_cost(
-                        neighbor, end_idx
+                        neighbor, end_idx, lat_array, lon_array
                     )
-
-                    # If the neighbor is not already in the open set, add it
                     if neighbor not in [n for _, n in open_set]:
                         heapq.heappush(open_set, (f_score[neighbor], neighbor))
 
-        # If a path has been found, reconstruct the path from the came_from information
         if path_found:
-            path = reconstruct_path(came_from, start_idx, end_idx)
-
-            # Calculate the time and distance cost of the optimal path
+            path = reconstruct_path(came_from, start_idx, end_idx, lat_array, lon_array)
             time, distance = calculate_movement(
-                ds, start_idx, end_idx, glider_raw_speed
+                ds, start_idx, end_idx, lat_array, lon_array, glider_raw_speed
             )
-
-        # If no path has been found, use the direct distance from start to end
-        # and calculate the time and distance cost of the direct path
         else:
-            print(
-                f"Direct path used from {grid_to_coord(*start_idx, lat_array, lon_array)} to {grid_to_coord(*end_idx, lat_array, lon_array)}."
+            path, time, distance = direct_distance(
+                start_idx, end_idx, lat_array, lon_array, glider_raw_speed
             )
-            path, time, distance = direct_distance(start_idx, end_idx, glider_raw_speed)
 
-        # Return the optimal path, time cost, and distance cost
         return path, time, distance
 
     ### MAIN FUNCTION CODE ###
     # Define variables
-    ds = model.da_data
+    ds = ds.load()  # load the data. if chunked, the algorithm will run incredibly slow!
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
 
@@ -418,8 +398,11 @@ def compute_a_star_path(
     print(f"{text_name}: Calculating A* optimal path...")
     starttime = print_starttime()
 
+    # Ensure the waypoints are float tuples
+    waypoints_list = [(float(lat), float(lon)) for lat, lon in waypoints_list]
+
     # Get the latitude and longitude arrays from the data
-    lat_array = ds.lon.values
+    lat_array = ds.lat.values
     lon_array = ds.lon.values
 
     # Initialize an empty list to store the optimal mission path
@@ -436,7 +419,7 @@ def compute_a_star_path(
 
         # Run the A* algorithm to get the optimal path, time, and distance for the current segment
         segment_path, segment_time, segment_distance = algorithm_a_star(
-            ds, start_idx, end_idx, glider_raw_speed
+            ds, start_idx, end_idx, lat_array, lon_array, glider_raw_speed
         )
         # Extend the optimal mission path with the current segment path (excluding the last point)
         optimal_mission_path.extend(segment_path[:-1])
@@ -482,5 +465,6 @@ def compute_a_star_path(
 
     return optimal_mission_path
 
-# TODO: Add a new algorithm for finding the optimal path. 
+
+# TODO: Add a new algorithm for finding the optimal path.
 # Might need to rework A* function to have helper functions be on the outside. We shall see.

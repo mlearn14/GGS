@@ -1,11 +1,12 @@
 # author: matthew learn (matt.learn@marine.rutgers.edu)
 
-import xarray as xr
-import xesmf as xe
-import numpy as np
 import datetime as dt
 from datetime import datetime
+import math
+import numpy as np
 import os
+import xarray as xr
+import xesmf as xe
 
 
 # Helper functions
@@ -13,11 +14,13 @@ def print_starttime() -> datetime:
     """
     Prints the start time of the script.
 
-        Args:
-            - None
+    Args:
+    ----------
+        - `None`
 
-        Returns:
-            - start_time (datetime): The start time of the script.
+    Returns:
+    ----------
+        - start_time (datetime): The start time of the script.
     """
     starttime = dt.datetime.now(dt.timezone.utc)
     print(f"Start time (UTC): {starttime}")
@@ -29,11 +32,13 @@ def print_endtime() -> datetime:
     """
     Prints the end time of the script.
 
-        Args:
-            None
+    Args:
+    ----------
+        - `None`
 
-        Returns:
-            end_time (datetime): The end time of the script.
+    Returns:
+    ----------
+        - end_time (datetime): The end time of the script.
     """
     endtime = dt.datetime.now(dt.timezone.utc)
     print(f"End time (UTC): {endtime}")
@@ -45,15 +50,46 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
     """
     Prints the runtime of the script.
 
-        Args:
-            - starttime (datetime): The start time of the script.
-            - endtime (datetime): The end time of the script.
+    Args:
+    ----------
+        - starttime (datetime): The start time of the script.
+        - endtime (datetime): The end time of the script.
 
-        Returns:
-            - None
+    Returns:
+    ----------
+        - None
     """
     runtime = endtime - starttime
     print(f"Runtime: {runtime}")
+
+
+def optimal_workers(power: float = 1.0) -> int:
+    """
+    Calculate the optimal number of workers for parallel processing based on the available CPU cores and a power factor.
+
+    Args:
+    ----------
+        - power (float): The percentage of available resources to use in processing. Values should be between 0 and 1. Defaults to 1.
+
+    Returns:
+    ----------
+        - num_workers (int): The optimal number of workers for parallel processing.
+    """
+
+    print(f"Allocating {power * 100}% of available CPU cores...")
+
+    if not 0 <= power <= 1:
+        raise ValueError("Power must be between 0 and 1.")
+
+    total_cores = os.cpu_count()
+
+    if total_cores is None:
+        total_cores = 4
+
+    num_workers = max(1, math.floor(total_cores * power))
+    print(f"Number of workers: {num_workers}")
+
+    return num_workers
 
 
 def generate_filename(
@@ -86,20 +122,21 @@ def generate_filename(
     return os.path.join(output_dir, filename)
 
 
+# debating moving this to plotting.py
 def save_fig(fig: object, filename: str) -> None:
     print(f"Saving figure to {filename}")
     fig.savefig(filename, bbox_inches="tight", dpi=300)
     print("Saved.")
 
 
-# TODO: figure out where to put this hierarchically
-def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset) -> xr.Dataset:
+def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Dataset:
     """
     Regrids the first dataset to the second dataset.
 
         Args:
             - ds1 (xr.Dataset): The first dataset. This is the dataset that will be regridded.
             - ds2 (xr.Dataset): The second dataset. This is the dataset that the first dataset will be regridded to.
+            - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
         Returns:
             - ds1_regridded (xr.Dataset): The first dataset regridded to the second dataset.
@@ -107,8 +144,9 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset) -> xr.Dataset:
     text_name = ds1.attrs["text_name"]
     model_name = ds1.attrs["model_name"]
 
-    print(f"{text_name}: Regridding to {ds2.attrs['model_name']}...")
-    starttime = print_starttime()
+    if diag_text:
+        print(f"{text_name}: Regridding to {ds2.attrs['model_name']}...")
+        starttime = print_starttime()
 
     # Code from Mike Smith.
     ds1_regridded = ds1.reindex_like(ds2, method="nearest")
@@ -120,9 +158,11 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset) -> xr.Dataset:
     ds1_regridded.attrs["text_name"] = text_name
     ds1_regridded.attrs["model_name"] = model_name
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+        print()
 
     return ds1_regridded
 
@@ -237,42 +277,44 @@ def depth_average(model: object) -> xr.Dataset:
 
 
 def calculate_rmsd(
-    model1: xr.Dataset, model2: xr.Dataset, regrid: bool = True
+    ds1: xr.Dataset, ds2: xr.Dataset, regrid: bool = True
 ) -> xr.DataArray:
     """
     Calculates the root mean squared difference between two datasets.
 
     Args:
-        - model1 (xr.Dataset): The first dataset.
-        - model2 (xr.Dataset): The second dataset.
-        - regrid (bool, optional): Whether to regrid model1 to model2. Defaults to True.
+        - ds1 (xr.Dataset): The first dataset.
+        - ds2 (xr.Dataset): The second dataset.
+        - regrid (bool, optional): Whether to regrid ds1 to ds2. Defaults to True.
             - NOTE: If RTOFS data is used, put the RTOFS dataset first!
 
     Returns:
         - rmsd (xr.DataArray): The root mean squared difference between the two datasets.
     """
-    text_name1: str = model1.attrs["text_name"]
-    text_name2: str = model2.attrs["text_name"]
+    text_name1: str = ds1.attrs["text_name"]
+    text_name2: str = ds2.attrs["text_name"]
+    text_name = sorted([text_name1, text_name2])
+    text_name = " & ".join(text_name)
 
     model_name = sorted(
         [
-            model1.attrs["model_name"],
-            model2.attrs["model_name"],
+            ds1.attrs["model_name"],
+            ds2.attrs["model_name"],
         ]
     )
     model_name = "+".join(model_name)
 
-    print(f"{text_name1} & {text_name2}: Calculating RMSD...")
+    print(f"{text_name}: Calculating RMSD...")
     starttime = print_starttime()
 
     if regrid:
         # Interpolate model2 to model1.
-        model1 = regrid_ds(model1, model2)
+        ds1 = regrid_ds(ds1, ds2, diag_text=False)
 
-    diff = model1.magnitude - model2.magnitude
+    diff = ds1.magnitude - ds2.magnitude
     rmsd = np.sqrt(np.square(diff).mean(dim="depth"))
 
-    rmsd.attrs["text_name"] = f"{text_name1} & {text_name2}"
+    rmsd.attrs["text_name"] = text_name
     rmsd.attrs["model_name"] = model_name
 
     print("Done.")
