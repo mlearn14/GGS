@@ -14,11 +14,11 @@ class CMEMS:
     Class for handling Copernicus Marine Environment Monitoring Service (CMEMS) data.
 
     Attributes:
-        raw_data (xr.Dataset): Raw data from CMEMS.
-        subset_data (xr.Dataset): Subset of raw data.
-        z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
-        da_data (xr.Dataset): Depth averaged data.
-        xy_interpolated_data (xr.Dataset): Interpolated data to a given set of coordinates.
+    ----------
+        - raw_data (xr.Dataset): Raw data from CMEMS.
+        - subset_data (xr.Dataset): Subset of raw data.
+        - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
+        - da_data (xr.Dataset): Depth averaged data.
     """
 
     def __init__(self) -> None:
@@ -27,7 +27,6 @@ class CMEMS:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
-        self.xy_interpolated_data: xr.Dataset = None
 
     def load(
         self, username: str = "maristizabalvar", password: str = "MariaCMEMS2018"
@@ -36,11 +35,13 @@ class CMEMS:
         Loads and subsets Eastward and Northward current velocities from the CMEMS model. Saves data to self.raw_data attribute.
 
         Args:
-            username (str): CMEMS username. Defaults to "maristizabalvar".
-            password (str): CMEMS password. Defaults to "MariaCMEMS2018".
+        ----------
+            - username (str, optional): CMEMS username.
+            - password (str, optional): CMEMS password.
 
         Returns:
-            None
+        ----------
+            `None`
         """
         print("Loading CMEMS data...")
         starttime = print_starttime()
@@ -65,12 +66,13 @@ class CMEMS:
         Subsets the CMEMS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
 
         Args:
-            dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-            depth (int): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
+        ----------
+            - dates (tuple): A tuple of (date_min, date_max) in datetime format.
+            - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+            - depth (int, optional): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
 
         Returns:
-            None
+            `None`
         """
         text_name = self.raw_data.attrs["text_name"]
 
@@ -96,11 +98,11 @@ class ESPC:
     Class for handling Earth System Prediciton Capability (ESPC) data.
 
     Attributes:
-        raw_data (xr.Dataset): Raw data from CMEMS.
-        subset_data (xr.Dataset): Subset of raw data.
-        z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
-        da_data (xr.Dataset): Depth averaged data.
-        xy_interpolated_data (xr.Dataset): Interpolated data to a given set of coordinates.
+    ----------
+        - raw_data (xr.Dataset): Raw data from CMEMS.
+        - subset_data (xr.Dataset): Subset of raw data.
+        - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
+        - da_data (xr.Dataset): Depth averaged data.
     """
 
     def __init__(self) -> None:
@@ -109,15 +111,9 @@ class ESPC:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
-        self.xy_interpolated_data: xr.Dataset = None
 
     def load(self) -> None:
-        """
-        Loads Eastward and Northward current velocities from the ESPC model. Saves data to self.raw_data attribute.
-
-        Returns:
-            None
-        """
+        """Loads Eastward and Northward current velocities from the ESPC model. Saves data to self.raw_data attribute."""
         print("Loading ESPC data...")
         starttime = print_starttime()
 
@@ -146,12 +142,14 @@ class ESPC:
         Subsets the ESPC dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
 
         Args:
-            dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-            depth (int): The maximum depth in meters. Defaults to 1000.
+        ----------
+            - dates (tuple): A tuple of (date_min, date_max) in datetime format.
+            - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+            - depth (int, optional): The maximum depth in meters. Defaults to 1000.
 
         Returns:
-            None
+        ----------
+            - `None`
         """
         # unpack the dates and extent tuples
         text_name = self.raw_data.attrs["text_name"]
@@ -177,11 +175,11 @@ class RTOFS:
     Class for handling Real-Time Ocean Forecast System (RTOFS) data.
 
     Attributes:
-        raw_data (xr.Dataset): Raw data from CMEMS.
-        subset_data (xr.Dataset): Subset of raw data.
-        z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
-        da_data (xr.Dataset): Depth averaged data.
-        xy_interpolated_data (xr.Dataset): Interpolated data to a given set of coordinates.
+    ----------
+        - raw_data (xr.Dataset): Raw data from CMEMS.
+        - subset_data (xr.Dataset): Subset of raw data.
+        - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
+        - da_data (xr.Dataset): Depth averaged data.
     """
 
     def __init__(self) -> None:
@@ -190,17 +188,21 @@ class RTOFS:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
-        self.xy_interpolated_data: xr.Dataset = None
 
     def load(self, source: str) -> None:
         """
         Loads Eastward and Northward current velocities from the RTOFS model. Saves data to self.raw_data attribute.
 
         Args:
-            source (str): RTOFS model source. Valid args are: 'east', 'west', and 'parallel'.
+        ----------
+            - source (str): RTOFS model source. Valid args are: 'east', 'west', and 'parallel'.
                 - 'east' - RTOFS (East Coast)
                 - 'west' - RTOFS (West Coast)
                 - 'parallel' - RTOFS (Experimental version running in parallel with the production version)
+
+        Returns:
+        ----------
+            - `None`
         """
         print("Loading RTOFS data...")
         starttime = print_starttime()
@@ -275,12 +277,14 @@ class RTOFS:
         Subsets the RTOFS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.subset_data attribute.
 
         Args:
-            dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
-            depth (int): The maximum depth in meters. Defaults to 1000.
+        ----------
+            - dates (tuple): A tuple of (date_min, date_max) in datetime format.
+            - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+            - depth (int, optional): The maximum depth in meters. Defaults to 1000.
 
         Returns:
-            None
+        ----------
+            - `None`
         """
         # unpack the dates and extent tuples
         text_name = self.raw_data.attrs["text_name"]

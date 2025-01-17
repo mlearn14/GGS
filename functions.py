@@ -57,7 +57,7 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
 
     Returns:
     ----------
-        - None
+        - `None`
     """
     runtime = endtime - starttime
     print(f"Runtime: {runtime}")
@@ -102,15 +102,17 @@ def generate_filename(
     """
     Generate a standardized filename for saving figures.
 
-    Parameters:
-        date (str): The date in YYYYMMDD format.
-        figure_type (str): Type of figure (e.g., 'magnitude', 'threshold', 'rmsd').
-        plot_type (str): Type of plot (e.g., 'streamplot', 'quiverplot', 'none').
-        model_names (list): Model names(s) (e.g., 'RTOFS', 'CMEMS', 'RTOFS+CMEMS').
-        output_dir (str): Directory where the file will be saved. Default is 'figures'.
+    Args:
+    ----------
+        - date (str): The date in YYYYMMDD format.
+        - figure_type (str): Type of figure (e.g., 'magnitude', 'threshold', 'rmsd').
+        - plot_type (str): Type of plot (e.g., 'streamplot', 'quiverplot', 'none').
+        - model_names (list): Model names(s) (e.g., 'RTOFS', 'CMEMS', 'RTOFS+CMEMS').
+        - output_dir (str, optional): Directory where the file will be saved. Default is 'figures'.
 
     Returns:
-        filename (str): Full path for the output file.
+    ----------
+        - filename (str): Full path for the output file.
     """
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -124,6 +126,18 @@ def generate_filename(
 
 # debating moving this to plotting.py
 def save_fig(fig: object, filename: str) -> None:
+    """
+    Save a figure to a file.
+
+    Args:
+    ----------
+        - fig (object): The figure object to be saved.
+        - filename (str): The name of the file to save the figure to.
+
+    Returns:
+    ----------
+        - `None`
+    """
     print(f"Saving figure to {filename}")
     fig.savefig(filename, bbox_inches="tight", dpi=300)
     print("Saved.")
@@ -133,13 +147,15 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
     """
     Regrids the first dataset to the second dataset.
 
-        Args:
-            - ds1 (xr.Dataset): The first dataset. This is the dataset that will be regridded.
-            - ds2 (xr.Dataset): The second dataset. This is the dataset that the first dataset will be regridded to.
-            - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
+    Args:
+    ----------
+        - ds1 (xr.Dataset): The first dataset. This is the dataset that will be regridded.
+        - ds2 (xr.Dataset): The second dataset. This is the dataset that the first dataset will be regridded to.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
-        Returns:
-            - ds1_regridded (xr.Dataset): The first dataset regridded to the second dataset.
+    Returns:
+    ----------
+        - ds1_regridded (xr.Dataset): The first dataset regridded to the second dataset.
     """
     text_name = ds1.attrs["text_name"]
     model_name = ds1.attrs["model_name"]
@@ -172,12 +188,14 @@ def interpolate_depth(model: object, max_depth: int = 1000) -> xr.Dataset:
     """
     Interpolates the model data to 1 meter depth intervals.
 
-        Args:
-            - model (object): The model data.
-            - max_depth (int, optional): The maximum depth to interpolate to. Defaults to 1000.
+    Args:
+    ----------
+        - model (object): The model data.
+        - max_depth (int, optional): The maximum depth to interpolate to. Defaults to 1000.
 
-        Returns:
-            - ds_interp (xr.Dataset): The interpolated model data.
+    Returns:
+    ----------
+        - ds_interp (xr.Dataset): The interpolated model data.
     """
     ds = model.subset_data
 
@@ -215,11 +233,13 @@ def calculate_magnitude(model: object) -> xr.Dataset:
     """
     Calculates the magnitude of the model data.
 
-        Args:
-            - model (object): The model data.
+    Args:
+    ----------
+        - model (object): The model data.
 
-        Returns:
-            - ds (xr.Dataset): The model data with a new variable 'magnitude'.
+    Returns:
+    ----------
+        - ds (xr.Dataset): The model data with a new variable 'magnitude'.
     """
     ds = model.z_interpolated_data
 
@@ -250,9 +270,11 @@ def depth_average(model: object) -> xr.Dataset:
     Gets the depth integrated current velocities from the passed model data.
 
     Args:
+    ----------
         - model (object): The model data.
 
     Returns:
+    ----------
         - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
     """
     ds = model.z_interpolated_data
@@ -283,12 +305,14 @@ def calculate_rmsd(
     Calculates the root mean squared difference between two datasets.
 
     Args:
+    ----------
         - ds1 (xr.Dataset): The first dataset.
         - ds2 (xr.Dataset): The second dataset.
         - regrid (bool, optional): Whether to regrid ds1 to ds2. Defaults to True.
             - NOTE: If RTOFS data is used, put the RTOFS dataset first!
 
     Returns:
+    ----------
         - rmsd (xr.DataArray): The root mean squared difference between the two datasets.
     """
     text_name1: str = ds1.attrs["text_name"]
@@ -331,9 +355,11 @@ def calculate_simple_mean(ds_list: list[xr.Dataset]) -> xr.Dataset:
     Calculates the simple mean of a list of datasets. Returns a single xr.Dataset of the simple means.
 
     Args:
+    ----------
         - ds_list (list[xr.Dataset]): A list of xr.Datasets.
 
     Returns:
+    ----------
         - simple_mean (xr.Dataset): The simple mean of the list of datasets.
     """
     length = len(ds_list)
@@ -348,9 +374,11 @@ def calculate_mean_difference(ds_list: list[xr.Dataset]) -> xr.Dataset:
     Calculates the mean difference between a list of datasets. Returns a single xr.Dataset of the mean differences.
 
     Args:
+    ----------
         - ds_list (list[xr.Dataset]): A list of xr.Datasets.
 
     Returns:
+    ----------
         - mean_diff (xr.Dataset): The mean difference between the list of datasets.
     """
     length = len(ds_list)
