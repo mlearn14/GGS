@@ -1,7 +1,6 @@
 # local ignores
 data/*
 figures/*
-Oceanshot_Figure_Generator.ipynb
 streamlit_test.py
 streamlit_function.py
 ggsdashboard.py

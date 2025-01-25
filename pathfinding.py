@@ -468,4 +468,5 @@ def compute_a_star_path(
 
 
 # TODO: Add a new algorithm for finding the optimal path.
+# TODO: Add different heuristic function to see if it makes a difference.
 # Might need to rework A* function to have helper functions be on the outside. We shall see.

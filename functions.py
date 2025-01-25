@@ -115,6 +115,7 @@ def generate_filename(
         - filename (str): Full path for the output file.
     """
     # Ensure the output directory exists
+    output_dir = f"{output_dir}/{date}/{plot_type}"
     os.makedirs(output_dir, exist_ok=True)
 
     # Construct the file name
@@ -125,7 +126,7 @@ def generate_filename(
 
 
 # debating moving this to plotting.py
-def save_fig(fig: object, filename: str) -> None:
+def save_fig(fig: object, filename: str, date: str) -> None:
     """
     Save a figure to a file.
 
@@ -161,7 +162,7 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
     model_name = ds1.attrs["model_name"]
 
     if diag_text:
-        print(f"{text_name}: Regridding to {ds2.attrs['model_name']}...")
+        print(f"{text_name}: Regridding to {ds2.attrs['text_name']}...")
         starttime = print_starttime()
 
     # Code from Mike Smith.
@@ -184,7 +185,9 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
 
 
 # Calculation funtions
-def interpolate_depth(model: object, max_depth: int = 1000) -> xr.Dataset:
+def interpolate_depth(
+    model: object, max_depth: int = 1000, diag_text: bool = True
+) -> xr.Dataset:
     """
     Interpolates the model data to 1 meter depth intervals.
 
@@ -192,6 +195,7 @@ def interpolate_depth(model: object, max_depth: int = 1000) -> xr.Dataset:
     ----------
         - model (object): The model data.
         - max_depth (int, optional): The maximum depth to interpolate to. Defaults to 1000.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
     Returns:
     ----------
@@ -208,8 +212,9 @@ def interpolate_depth(model: object, max_depth: int = 1000) -> xr.Dataset:
     u = ds["u"]
     v = ds["v"]
 
-    print(f"{text_name}: Interpolating depth...")
-    starttime = print_starttime()
+    if diag_text:
+        print(f"{text_name}: Interpolating depth...")
+        starttime = print_starttime()
 
     # .compute() is necessary because it actually computes the interpolation with parallel processing.
     u_interp = u.interp(depth=z_range).compute()
@@ -221,21 +226,23 @@ def interpolate_depth(model: object, max_depth: int = 1000) -> xr.Dataset:
     ds_interp.attrs["model_name"] = model_name
     ds_interp = ds_interp.chunk("auto")
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+        print()
 
     return ds_interp
 
 
-def calculate_magnitude(model: object) -> xr.Dataset:
+def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
     """
     Calculates the magnitude of the model data.
 
     Args:
     ----------
         - model (object): The model data.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
     Returns:
     ----------
@@ -246,8 +253,9 @@ def calculate_magnitude(model: object) -> xr.Dataset:
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
 
-    print(f"{text_name}: Calculating magnitude...")
-    starttime = print_starttime()
+    if diag_text:
+        print(f"{text_name}: Calculating magnitude...")
+        starttime = print_starttime()
 
     # Calculate magnitude (derived from Pythagoras)
     magnitude = np.sqrt(ds["u"] ** 2 + ds["v"] ** 2)
@@ -257,21 +265,23 @@ def calculate_magnitude(model: object) -> xr.Dataset:
     ds = ds.assign(magnitude=magnitude)
     ds = ds.chunk("auto")  # just to make sure
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+        print()
 
     return ds
 
 
-def depth_average(model: object) -> xr.Dataset:
+def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
     """
     Gets the depth integrated current velocities from the passed model data.
 
     Args:
     ----------
         - model (object): The model data.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
     Returns:
     ----------
@@ -282,60 +292,58 @@ def depth_average(model: object) -> xr.Dataset:
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
 
-    print(f"{text_name}: Depth averaging...")
-    starttime = print_starttime()
+    if diag_text:
+        print(f"{text_name}: Depth averaging...")
+        starttime = print_starttime()
 
     ds_da = ds.mean(dim="depth", keep_attrs=True)
 
     ds_da.attrs["text_name"] = text_name
     ds_da.attrs["model_name"] = model_name
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+        print()
 
     return ds_da
 
 
-def calculate_rmsd(
-    ds1: xr.Dataset, ds2: xr.Dataset, regrid: bool = True
-) -> xr.DataArray:
+def calculate_rmsd(data1, data2, regrid: bool = True) -> xr.DataArray:
     """
     Calculates the root mean squared difference between two datasets.
 
     Args:
     ----------
-        - ds1 (xr.Dataset): The first dataset.
-        - ds2 (xr.Dataset): The second dataset.
-        - regrid (bool, optional): Whether to regrid ds1 to ds2. Defaults to True.
-            - NOTE: If RTOFS data is used, put the RTOFS dataset first!
+        - data1 (xr.Dataset or xr.DataArray): The first dataset/array.
+        - data2 (xr.Dataset or xr.DataArray): The second dataset/array.
+        - regrid (bool, optional): Whether to regrid datasets. Defaults to True.
 
     Returns:
     ----------
         - rmsd (xr.DataArray): The root mean squared difference between the two datasets.
     """
-    text_name1: str = ds1.attrs["text_name"]
-    text_name2: str = ds2.attrs["text_name"]
-    text_name = sorted([text_name1, text_name2])
-    text_name = " & ".join(text_name)
+    model_list = [data1, data2]
+    model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
+    data1 = model_list[0]
+    data2 = model_list[1]
 
-    model_name = sorted(
-        [
-            ds1.attrs["model_name"],
-            ds2.attrs["model_name"],
-        ]
-    )
-    model_name = "+".join(model_name)
+    text_name1: str = data1.attrs["text_name"]
+    text_name2: str = data2.attrs["text_name"]
+    model_name1: str = data1.attrs["model_name"]
+    model_name2: str = data2.attrs["model_name"]
+    text_name = " & ".join([text_name1, text_name2])
+    model_name = "+".join([model_name1, model_name2])
 
     print(f"{text_name}: Calculating RMSD...")
     starttime = print_starttime()
 
     if regrid:
-        # Interpolate model2 to model1.
-        ds1 = regrid_ds(ds1, ds2, diag_text=False)
+        data2 = regrid_ds(data2, data1, diag_text=False)  # regrid model2 to model1.
 
-    diff = ds1.magnitude - ds2.magnitude
+    # Calculate RMSD
+    diff = data1.magnitude - data2.magnitude
     rmsd = np.sqrt(np.square(diff).mean(dim="depth"))
 
     rmsd.attrs["text_name"] = text_name

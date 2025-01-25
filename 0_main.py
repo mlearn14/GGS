@@ -3,7 +3,7 @@ from functions import *
 from pathfinding import *
 from plotting import *
 
-from concurrent.futures import ProcessPoolExecutor
+import itertools
 
 
 def main() -> None:
@@ -13,15 +13,22 @@ def main() -> None:
     ############################## PARAMETERS ##############################
 
     # Dataset parameters
-    date = "2025-01-18"
-    depth = 1100
-    lon_min = -79
-    lon_max = -50
+    date = "2025-01-26"  # format: "YYYY-MM-DD"
+    depth = 1100  # keep 1100 to make sure we get the next deepest layer. CMEMS data does not have a layer at 1000 meters
     lat_min = 34
+    lon_min = -79
     lat_max = 45
+    lon_max = -50
+
+    # Model selection
+    CMEMS_ = True  # European model
+    ESPC_ = True  # Navy model
+    RTOFS_EAST_ = True  # NOAA model for US east coast
+    RTOFS_WEST_ = False  # NOAA model for US west coast
+    RTOFS_PARALLEL_ = True  # experimental NOAA model for US east coast
 
     # Pathfinding parameters
-    conpute_optimal_path = False
+    compute_optimal_path = False
     waypoints = [
         (41.240, -70.958),
         (37.992, -71.248),
@@ -30,354 +37,231 @@ def main() -> None:
         (39.801, -60.653),
         (39.618, -55.87),
     ]
+    glider_raw_speed = 0.5  # m/s. This is the base speed of the glider
+
+    # Model combarison parameters
+    RMSD = True  # Root mean squared difference. Set to True or False (no quotations)
 
     # Plotting parameters
-    contour_type = "threshold"  # "magnitude", "threshold", "rmsd"
-    vector_type = "streamplot"  # "quiver", "streamplot", None
-    density = 6  # Used for streamlines. Higer number = more streamlines
-    scalar = 4  # Used for quiver plots. Lower number = more dense quivers
-    save = True
+    make_magnitude_plot = False  # set to True or False (no quotations)
+    make_threshold_plot = False  # set to True or False (no quotations)
+    make_rmsd_plot = True  # set to True or False (no quotations)
 
-    ############################## INITIALIZE ##################################
+    # "quiver", "streamplot", or None (no quotations arond None)
+    vector_type = "quiver"
+    density = 5  # Used for streamlines. Higer number = more streamlines
+    scalar = 4  # Used for quiver plots. Lower number = more dense quivers
+
+    save = True  # set to True or False (no quotations)
+
+    ############################## INITIALIZE SCRIPT ##################################
     print(
         rf"""
-                  _____  _____  ______
-                 / ___/ / ___/ /  ___/
-                | | __ | | __ (  (__
-                | | \ || | \ | \__  \
-                | |_| || |_| | ___)  )
-                 \____| \____|/_____/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
+ ~~~~~/\\\\\\\\\\\\~~~~~~/\\\\\\\\\\\\~~~~~~/\\\\\\\\\\\~~~~~~~/\\\\\\\\\~~~~~         
+  ~~~/\\\//////////~~~~~/\\\//////////~~~~~/\\\/////////\\\~~~/\\\///////\\\~~~        
+   ~~/\\\~~~~~~~~~~~~~~~/\\\~~~~~~~~~~~~~~~\//\\\~~~~~~\///~~~\///~~~~~~\//\\\~~       
+    ~\/\\\~~~~/\\\\\\\~~\/\\\~~~~/\\\\\\\~~~~\////\\\~~~~~~~~~~~~~~~~~~~~/\\\/~~~      
+     ~\/\\\~~~\/////\\\~~\/\\\~~~\/////\\\~~~~~~~\////\\\~~~~~~~~~~~~~~/\\\//~~~~~     
+      ~\/\\\~~~~~~~\/\\\~~\/\\\~~~~~~~\/\\\~~~~~~~~~~\////\\\~~~~~~~~/\\\//~~~~~~~~    
+       ~\/\\\~~~~~~~\/\\\~~\/\\\~~~~~~~\/\\\~~~/\\\~~~~~~\//\\\~~~~~/\\\/~~~~~~~~~~~   
+        ~\//\\\\\\\\\\\\/~~~\//\\\\\\\\\\\\/~~~\///\\\\\\\\\\\/~~~~~/\\\\\\\\\\\\\\\~  
+         ~~\////////////~~~~~~\////////////~~~~~~~\///////////~~~~~~\///////////////~~ 
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-                Glider Guidance System
-                        v 2.0
-                Created by Matthew Learn 
-        
-Need help? Send an email to matt.learn@marine.rutgers.edu
+                                    Glider Guidance System 2
+                                          Version 1.0.0
+                                    Created by Matthew Learn
+
+                      Need help? Send an email to matt.learn@marine.rutgers.edu
         """
     )
+    # print parameters
+    print(
+        "----------------------------\nTicket Information:\n----------------------------"
+    )
+    print(f"Date: {date}")
+    print(f"Depth: {depth} meters")
+    print(f"Lat bounds: {lat_min} to {lat_max}")
+    print(f"Lon bounds: {lon_min} to {lon_max}")
+    print(f"CMEMS: {CMEMS_}")
+    print(f"ESPC: {ESPC_}")
+    print(f"RTOFS (East Coast): {RTOFS_EAST_}")
+    print(f"RTOFS (West Coast): {RTOFS_WEST_}")
+    print(f"RTOFS (Parallel): {RTOFS_PARALLEL_}")
+    print(f"Compute optimal path: {compute_optimal_path}")
+    print(f"Waypoints: {waypoints}")
+    print(f"Raw glider speed: {glider_raw_speed} m/s")
+    print(f"RMSD: {RMSD}")
+    print(f"Make magnitude plot: {make_magnitude_plot}")
+    print(f"Make threshold plot: {make_threshold_plot}")
+    print(f"Make RMSD plot: {make_rmsd_plot}")
+    print(f"Vector type: {vector_type}")
+    print(f"Density: {density}")
+    print(f"Scalar: {scalar}")
+    print(f"Save: {save}")
+    print("----------------------------\n")
+
     print("Starting script...")
     starttime = print_starttime()
 
-    ############################## LOAD DATA ##################################
-    print("\n######################## LOADING DATA ##############################\n")
+    # initialize secondary subset parameters
     dates = (date, date)
     extent = (lat_min, lon_min, lat_max, lon_max)
 
+    # initialize models
     cmems = CMEMS()
-    cmems.load()
-    cmems.subset(dates, extent, depth)
-    cmems.subset_data = cmems.subset_data.isel(time=0)
-
     espc = ESPC()
-    espc.load()
-    espc.subset(dates, extent, depth)
-    espc.subset_data = espc.subset_data.isel(time=0)
-
     rtofs_e = RTOFS()
-    rtofs_e.load("east")
-    rtofs_e.subset(dates, extent, depth)
-    rtofs_e.subset_data = rtofs_e.subset_data.isel(time=0)
-
+    rtofs_w = RTOFS()
     rtofs_p = RTOFS()
-    rtofs_p.load("parallel")
-    rtofs_p.subset(dates, extent, depth)
-    rtofs_p.subset_data = rtofs_p.subset_data.isel(time=0)
 
-    ############################## PROCESS DATA #################################
-    print("######################## PROCESSING DATA ##############################\n")
-    cmems.z_interpolated_data = interpolate_depth(cmems)
-    cmems.z_interpolated_data = calculate_magnitude(cmems)
-    cmems.da_data = depth_average(cmems)
+    # get selected models
+    model_select_dict = {
+        cmems: CMEMS_,
+        espc: ESPC_,
+        rtofs_e: RTOFS_EAST_,
+        rtofs_w: RTOFS_WEST_,
+        rtofs_p: RTOFS_PARALLEL_,
+    }
+    model_list = [model for model, selected in model_select_dict.items() if selected]
 
-    espc.z_interpolated_data = interpolate_depth(espc)
-    espc.z_interpolated_data = calculate_magnitude(espc)
-    espc.da_data = depth_average(espc)
+    # initialize pathfinding dictionary
+    optimal_paths = {}
 
-    rtofs_e.z_interpolated_data = interpolate_depth(rtofs_e)
-    rtofs_e.z_interpolated_data = calculate_magnitude(rtofs_e)
-    rtofs_e.da_data = depth_average(rtofs_e)
-    rtofs_e_dac_regridded = regrid_ds(rtofs_e.da_data, cmems.da_data)
+    # get selected plotting paramters
+    contour_select_dict = {
+        "magnitude": make_magnitude_plot,
+        "threshold": make_threshold_plot,
+        "rmsd": make_rmsd_plot,
+    }
+    contour_type = [
+        contour for contour, selected in contour_select_dict.items() if selected
+    ]
 
-    rtofs_p.z_interpolated_data = interpolate_depth(rtofs_p)
-    rtofs_p.z_interpolated_data = calculate_magnitude(rtofs_p)
-    rtofs_p.da_data = depth_average(rtofs_p)
-    rtofs_p_dac_regridded = regrid_ds(rtofs_p.da_data, cmems.da_data)
+    ############################## PROCESSING INDIVIDUAL MODELS ##############################
+    print("\n############## PROCESSING INDIVIDUAL MODELS ##############\n")
 
-    # Compare models
-    if contour_type == "rmsd":
-        rmsd_re_rp = calculate_rmsd(
-            rtofs_e.z_interpolated_data, rtofs_p.z_interpolated_data, regrid=False
+    # make an instance of ESPC so that it can be regridded to the RTOFS dataset
+    try:
+        temp = ESPC()
+        temp.load(diag_text=False)
+        temp.raw_data.attrs["text_name"] = "COMMON GRID"
+        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
+        today = datetime.today().strftime("%Y-%m-%d")
+        temp.subset((today, today), extent, depth, diag_text=False)
+        temp.subset_data = temp.subset_data.isel(time=0)
+        temp.z_interpolated_data = interpolate_depth(temp, depth, diag_text=False)
+        temp.z_interpolated_data = calculate_magnitude(temp, diag_text=False)
+        temp.da_data = depth_average(temp, diag_text=False)
+    except Exception as e:
+        print(
+            f"ERROR: Failed to process ESPC {temp.raw_data.attrs['text_name']} data due to: {e}\n"
         )
-        rmsd_re_c = calculate_rmsd(
-            rtofs_e.z_interpolated_data, cmems.z_interpolated_data
-        )
-        rmsd_re_e = calculate_rmsd(
-            rtofs_e.z_interpolated_data, espc.z_interpolated_data
-        )
-        rmsd_rp_c = calculate_rmsd(
-            rtofs_p.z_interpolated_data, cmems.z_interpolated_data
-        )
-        rmsd_rp_e = calculate_rmsd(
-            rtofs_p.z_interpolated_data, espc.z_interpolated_data
-        )
-        rmsd_e_c = calculate_rmsd(espc.z_interpolated_data, cmems.z_interpolated_data)
+        print("Processing CMEMS COMMON GRID instead...")
 
-    # Get optimized paths
-    if conpute_optimal_path:
-        cmems_path = compute_a_star_path(waypoints, cmems.da_data)
-        espc_path = compute_a_star_path(waypoints, espc.da_data)
-        rtofs_e_path = compute_a_star_path(waypoints, rtofs_e_dac_regridded)
-        rtofs_p_path = compute_a_star_path(waypoints, rtofs_p_dac_regridded)
-    else:
-        cmems_path = None
-        espc_path = None
-        rtofs_e_path = None
-        rtofs_p_path = None
-        waypoints = None
+        temp = CMEMS()
+        temp.load(diag_text=False)
+        temp.raw_data.attrs["text_name"] = "COMMON GRID"
+        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
+        today = datetime.today().strftime("%Y-%m-%d")
+        temp.subset((today, today), extent, depth, diag_text=False)
+        temp.subset_data = temp.subset_data.isel(time=0)
+        temp.z_interpolated_data = interpolate_depth(temp, depth, diag_text=False)
+        temp.z_interpolated_data = calculate_magnitude(temp, diag_text=False)
+        temp.da_data = depth_average(temp, diag_text=False)
 
-    ############################## PLOT DATA ##############################
-    print("######################## PLOTTING DATA ##############################\n")
-    if contour_type == "magnitude" or contour_type == "threshold":
+    for model in model_list:
+        # load data
         try:
-            (
-                fig_c,
-                contourf_c,
-                legend_c,
-                cax_c,
-                quiver_c,
-                streamplot_c,
-                path_plot_c,
-                wp_plot_c,
-            ) = create_map(
-                data=cmems.da_data,
-                extent=extent,
-                contour_type=contour_type,
-                vector_type=vector_type,
-                density=density,
-                scalar=scalar,
-                optimized_path=cmems_path,
-                waypoints=waypoints,
-                initialize=True,
-                save=save,
-            )
-        except:
-            print("[ERROR] CMEMS: Failed to create map.\n")
+            if isinstance(model, RTOFS):
+                rtofs_sources = {rtofs_e: "east", rtofs_w: "west", rtofs_p: "parallel"}
+                source = rtofs_sources[model]
+                model.load(source)
+            else:
+                model.load()
 
+            # process data
+            model.subset(dates, extent, depth)  # subset
+            model.subset_data = model.subset_data.isel(time=0)
+            model.z_interpolated_data = interpolate_depth(model, depth)
+            model.z_interpolated_data = calculate_magnitude(model)
+            model.da_data = depth_average(model)
+            model.xy_interpolated_data = regrid_ds(model.da_data, temp.da_data)
+
+            # pathfinding
+            if compute_optimal_path:
+                optimal_paths[model] = compute_a_star_path(
+                    waypoints, model.xy_interpolated_data, glider_raw_speed
+                )
+            else:
+                optimal_paths[model] = None
+                waypoints = None
+
+            # plot da_data
+            if "magnitude" in contour_type:
+                create_map(
+                    model.xy_interpolated_data,
+                    extent,
+                    "magnitude",
+                    vector_type,
+                    density,
+                    scalar,
+                    optimal_paths[model],
+                    waypoints,
+                    save=save,
+                )
+            if "threshold" in contour_type:
+                create_map(
+                    model.xy_interpolated_data,
+                    extent,
+                    "threshold",
+                    vector_type,
+                    density,
+                    scalar,
+                    optimal_paths[model],
+                    waypoints,
+                    save=save,
+                )
+        except Exception as e:
+            print(
+                f"ERROR: Failed to process {model.raw_data.attrs['text_name']} data due to: {e}\n"
+            )
+            continue
+
+    ############################## PROCESSING MODEL COMPARISONS ##############################
+
+    # Calculate simple means for all selected models
+
+    # Calculate mean difference for all selected models
+
+    # Calculate the RMSD for every non-repeating model combination
+    if RMSD == True:
+        print("############## PROCESSING MODEL COMPARISONS ##############\n")
         try:
-            (
-                fig_e,
-                contourf_e,
-                legend_e,
-                cax_e,
-                quiver_e,
-                streamplot_e,
-                path_plot_e,
-                wp_plot_e,
-            ) = create_map(
-                data=espc.da_data,
-                extent=extent,
-                contour_type=contour_type,
-                vector_type=vector_type,
-                density=density,
-                scalar=scalar,
-                optimized_path=espc_path,
-                waypoints=waypoints,
-                initialize=True,
-                save=save,
-            )
-        except:
-            print("[ERROR] ESPC: Failed to create map.\n")
+            model_combos = list(itertools.combinations(model_list, r=2))
+            # not going to do list comprehension on this because of readability
+            rmsd_list = []
+            for model1, model2 in model_combos:
+                rmsd = calculate_rmsd(
+                    model1.z_interpolated_data, model2.z_interpolated_data
+                )
+                rmsd_regrid = regrid_ds(rmsd, temp.da_data)
+                rmsd_list.append(rmsd_regrid)
+            if "rmsd" in contour_type:  # this doesnt need to be its own thing?
+                [
+                    create_map(rmsd, extent, "rmsd", None, density, scalar, save=save)
+                    for rmsd in rmsd_list
+                ]
+        except Exception as e:
+            print(f"ERROR: Failed to calculate RMSD due to: {e}\n")
 
-        try:
-            (
-                fig_re,
-                contourf_re,
-                legend_re,
-                cax_re,
-                quiver_re,
-                streamplot_re,
-                path_plot_re,
-                wp_plot_re,
-            ) = create_map(
-                data=rtofs_e_dac_regridded,
-                extent=extent,
-                contour_type=contour_type,
-                vector_type=vector_type,
-                density=density,
-                scalar=scalar,
-                optimized_path=rtofs_e_path,
-                waypoints=waypoints,
-                initialize=True,
-                save=save,
-            )
-        except:
-            print("[ERROR] RTOFS (East Coast): Failed to create map.\n")
-
-        try:
-            (
-                fig_rp,
-                contourf_rp,
-                legend_rp,
-                cax_rp,
-                quiver_rp,
-                streamplot_rp,
-                path_plot_rp,
-                wp_plot_rp,
-            ) = create_map(
-                data=rtofs_p_dac_regridded,
-                extent=extent,
-                contour_type=contour_type,
-                vector_type=vector_type,
-                density=density,
-                scalar=scalar,
-                optimized_path=rtofs_p_path,
-                waypoints=waypoints,
-                initialize=True,
-                save=save,
-            )
-        except:
-            print("[ERROR] RTOFS (Parallel): Failed to create map.\n")
-
-    elif contour_type == "rmsd":
-        vector_type = None
-        (
-            fig_re_rp,
-            contourf_re_rp,
-            legend_re_rp,
-            cax_re_rp,
-            quiver_re_rp,
-            streamplot_re_rp,
-            path_plot_re_rp,
-            wp_plot_re_rp,
-        ) = create_map(
-            data=rmsd_re_rp,
-            extent=extent,
-            contour_type=contour_type,
-            vector_type=vector_type,
-            density=density,
-            scalar=scalar,
-            optimized_path=None,
-            waypoints=None,
-            initialize=True,
-            save=save,
-        )
-
-        (
-            fig_re_c,
-            contourf_re_c,
-            legend_re_c,
-            cax_re_c,
-            quiver_re_c,
-            streamplot_re_c,
-            path_plot_re_c,
-            wp_plot_re_c,
-        ) = create_map(
-            data=rmsd_re_c,
-            extent=extent,
-            contour_type=contour_type,
-            vector_type=vector_type,
-            density=density,
-            scalar=scalar,
-            optimized_path=None,
-            waypoints=None,
-            initialize=True,
-            save=save,
-        )
-
-        (
-            fig_re_e,
-            contourf_re_e,
-            legend_re_e,
-            cax_re_e,
-            quiver_re_e,
-            streamplot_re_e,
-            path_plot_re_e,
-            wp_plot_re_e,
-        ) = create_map(
-            data=rmsd_re_e,
-            extent=extent,
-            contour_type=contour_type,
-            vector_type=vector_type,
-            density=density,
-            scalar=scalar,
-            optimized_path=None,
-            waypoints=None,
-            initialize=True,
-            save=save,
-        )
-
-        (
-            fig_rp_c,
-            contourf_rp_c,
-            legend_rp_c,
-            cax_rp_c,
-            quiver_rp_c,
-            streamplot_rp_c,
-            path_plot_rp_c,
-            wp_plot_rp_c,
-        ) = create_map(
-            data=rmsd_rp_c,
-            extent=extent,
-            contour_type=contour_type,
-            vector_type=vector_type,
-            density=density,
-            scalar=scalar,
-            optimized_path=None,
-            waypoints=None,
-            initialize=True,
-            save=save,
-        )
-
-        (
-            fig_rp_e,
-            contourf_rp_e,
-            legend_rp_e,
-            cax_rp_e,
-            quiver_rp_e,
-            streamplot_rp_e,
-            path_plot_rp_e,
-            wp_plot_rp_e,
-        ) = create_map(
-            data=rmsd_rp_e,
-            extent=extent,
-            contour_type=contour_type,
-            vector_type=vector_type,
-            density=density,
-            scalar=scalar,
-            optimized_path=None,
-            waypoints=None,
-            initialize=True,
-            save=save,
-        )
-
-        (
-            fig_e_c,
-            contourf_e_c,
-            legend_e_c,
-            cax_e_c,
-            quiver_e_c,
-            streamplot_e_c,
-            path_plot_e_c,
-            wp_plot_e_c,
-        ) = create_map(
-            data=rmsd_e_c,
-            extent=extent,
-            contour_type=contour_type,
-            vector_type=vector_type,
-            density=density,
-            scalar=scalar,
-            optimized_path=None,
-            waypoints=None,
-            initialize=True,
-            save=save,
-        )
-
-    else:
-        raise ValueError(f"Invalid contour type: {contour_type}.")
-
-    print("Script Completed.")
+    print("############## PROCESSING COMPLETE ##############\n")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
+    print()
+
+    return
 
 
 if __name__ == "__main__":

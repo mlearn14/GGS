@@ -19,6 +19,7 @@ class CMEMS:
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
         - da_data (xr.Dataset): Depth averaged data.
+        - xy_interpolated_data (xr.Dataset): Interpolated data to common grid.
     """
 
     def __init__(self) -> None:
@@ -27,9 +28,13 @@ class CMEMS:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
+        self.xy_interpolated_data: xr.Dataset = None
 
     def load(
-        self, username: str = "maristizabalvar", password: str = "MariaCMEMS2018"
+        self,
+        username: str = "maristizabalvar",
+        password: str = "MariaCMEMS2018",
+        diag_text: bool = True,
     ) -> None:
         """
         Loads and subsets Eastward and Northward current velocities from the CMEMS model. Saves data to self.raw_data attribute.
@@ -38,15 +43,20 @@ class CMEMS:
         ----------
             - username (str, optional): CMEMS username.
             - password (str, optional): CMEMS password.
+            - diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
         Returns:
         ----------
             `None`
         """
-        print("Loading CMEMS data...")
-        starttime = print_starttime()
+        if diag_text:
+            print("Loading CMEMS data...")
+            starttime = print_starttime()
+
         ds_id = "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i"  # dataset id for CMEMS current model
-        ds = cm.open_dataset(dataset_id=ds_id, username=username, password=password)
+        ds = cm.open_dataset(
+            dataset_id=ds_id, username=username, password=password, maximum_depth=1100
+        )
 
         # rename variables for consistency across all datasets
         ds = ds.rename({"longitude": "lon", "latitude": "lat", "uo": "u", "vo": "v"})
@@ -56,12 +66,15 @@ class CMEMS:
 
         self.raw_data = ds  # keeps the raw data just in case
 
-        print("Done.")
-        endtime = print_endtime()
-        print_runtime(starttime, endtime)
-        print()
+        if diag_text:
+            print("Done.")
+            endtime = print_endtime()
+            print_runtime(starttime, endtime)
+            print()
 
-    def subset(self, dates: tuple, extent: tuple, depth: int = 1100) -> None:
+    def subset(
+        self, dates: tuple, extent: tuple, depth: int = 1100, diag_text: bool = True
+    ) -> None:
         """
         Subsets the CMEMS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
 
@@ -70,6 +83,7 @@ class CMEMS:
             - dates (tuple): A tuple of (date_min, date_max) in datetime format.
             - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
             - depth (int, optional): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
+            - diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
         Returns:
             `None`
@@ -90,7 +104,8 @@ class CMEMS:
 
         self.subset_data = self.subset_data.chunk("auto")
 
-        print(f"{text_name}: Subsetted data.\n")
+        if diag_text:
+            print(f"{text_name}: Subsetted data.\n")
 
 
 class ESPC:
@@ -103,6 +118,7 @@ class ESPC:
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
         - da_data (xr.Dataset): Depth averaged data.
+        - xy_interpolated_data (xr.Dataset): Interpolated data to common grid.
     """
 
     def __init__(self) -> None:
@@ -111,11 +127,13 @@ class ESPC:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
+        self.xy_interpolated_data: xr.Dataset = None
 
-    def load(self) -> None:
+    def load(self, diag_text: bool = True) -> None:
         """Loads Eastward and Northward current velocities from the ESPC model. Saves data to self.raw_data attribute."""
-        print("Loading ESPC data...")
-        starttime = print_starttime()
+        if diag_text:
+            print("Loading ESPC data...")
+            starttime = print_starttime()
 
         url = "https://tds.hycom.org/thredds/dodsC/FMRC_ESPC-D-V02_uv3z/FMRC_ESPC-D-V02_uv3z_best.ncd"
         ds = xr.open_dataset(url, drop_variables="tau")  # , chunks="auto"
@@ -132,12 +150,15 @@ class ESPC:
 
         self.raw_data = ds
 
-        print("Done.")
-        endtime = print_endtime()
-        print_runtime(starttime, endtime)
-        print()
+        if diag_text:
+            print("Done.")
+            endtime = print_endtime()
+            print_runtime(starttime, endtime)
+            print()
 
-    def subset(self, dates: tuple, extent: tuple, depth: int = 1000) -> None:
+    def subset(
+        self, dates: tuple, extent: tuple, depth: int = 1000, diag_text: bool = True
+    ) -> None:
         """
         Subsets the ESPC dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
 
@@ -146,6 +167,7 @@ class ESPC:
             - dates (tuple): A tuple of (date_min, date_max) in datetime format.
             - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
             - depth (int, optional): The maximum depth in meters. Defaults to 1000.
+            - diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
         Returns:
         ----------
@@ -167,7 +189,8 @@ class ESPC:
 
         self.subset_data = self.subset_data.chunk("auto")
 
-        print(f"{text_name}: Subsetted data.\n")
+        if diag_text:
+            print(f"{text_name}: Subsetted data.\n")
 
 
 class RTOFS:
@@ -180,6 +203,7 @@ class RTOFS:
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
         - da_data (xr.Dataset): Depth averaged data.
+        - xy_interpolated_data (xr.Dataset): Interpolated data to common grid.
     """
 
     def __init__(self) -> None:
@@ -188,6 +212,7 @@ class RTOFS:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
+        self.xy_interpolated_data: xr.Dataset = None
 
     def load(self, source: str) -> None:
         """

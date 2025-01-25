@@ -93,36 +93,6 @@ def clear_fig(
 
 
 ### Helper functions ###
-def coords_to_2D(data, text_name: str) -> tuple:
-    """
-    Converts lat/lon data to 2D arrays.
-
-    Args:
-    -----------
-        - data (Any): Data containing lat/lon data. Expected to be either an xarray Dataset or DataArray.
-        - text_name (str): Text name of dataset.
-
-    Returns:
-    -----------
-        - lon2D (np.ndarray): 2D array of longitude values.
-        - lat2D (np.ndarray): 2D array of latitude values.
-    """
-    if "RTOFS (East Coast)" and "RTOFS (Parallel)" in text_name:
-        # RTOFS already has 2D values for lat and lon
-        # Only applicable to RTOFS-RTOFS RMSD plots.
-        lon2D = data["lon"]
-        lat2D = data["lat"]
-    elif "RTOFS" in text_name:
-        # RTOFS already has 2D values for lat and lon
-        # Applicable to RTOFS magnitude and threshold plots.
-        lon2D = data["lon"]
-        lat2D = data["lat"]
-    else:
-        lon2D, lat2D = np.meshgrid(data.lon, data.lat)
-
-    return lon2D, lat2D
-
-
 def add_text(
     fig: object, ax: object, plot_title: str, date: dt.datetime, text_name: str
 ) -> None:
@@ -575,6 +545,7 @@ def populate_fig(
     -----------
     - contour_type (str): Type of contour (e.g., 'magnitude', 'threshold', 'rmsd').
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
+        -  NOTE: RTOFS must be regridded prior to being passed to this function for quiver to work.
     - fig (object): Figure object.
     - ax (object): Axis object.
     - data: Data to be plotted.
@@ -604,7 +575,7 @@ def populate_fig(
     streamplot = None
 
     text_name = data.attrs["text_name"]
-    lon2D, lat2D = coords_to_2D(data, text_name)
+    lon2D, lat2D = np.meshgrid(data.lon, data.lat)
 
     # Create contours.
     if contour_type == "magnitude":
@@ -749,7 +720,7 @@ def create_map(
         model_name = data.attrs["model_name"]
         fdate = data.time.dt.strftime("%Y%m%d%H").values
         filename = generate_filename(fdate, contour_type, vector_type, model_name)
-        save_fig(fig, filename)
+        save_fig(fig, filename, fdate)
 
     print("Done.")
     endtime = print_endtime()
