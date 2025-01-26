@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.0.0.
+Last updated for v1.0.1.
 
 ## Overview
 
