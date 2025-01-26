@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.0.0.
+Last updated for v1.0.1.
 
 ## Overview
 
@@ -11,7 +11,7 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
 1. Initialize parameters and models
 2. Initialize and load the common grid
 3. Individual model processing
-    - Load model from its repsective API
+    - Load model from its respective API
     - Subset model to desire parameters
     - Interpolate data from the surface to desired maximum depth
     - Calculate magnitude of currents from u and v components
@@ -21,7 +21,7 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
     - Plot depth averaged current velocity data
 4. Model comparison processing
     - Root Mean Square Difference (RMSD) Processing
-        - Generate all not repeating combinations of selected model datasets
+        - Generate all non-repeating combinations of selected model datasets
         - Calculate RMSD
         - Regrid RMSD data to common grid
         - Plot RMSD data

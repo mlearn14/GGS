@@ -122,7 +122,7 @@ def main(
           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
                                     Glider Guidance System 2
-                                          Version 1.0.0
+                                          Version 1.0.1
                                     Created by Matthew Learn
 
                       Need help? Send an email to matt.learn@marine.rutgers.edu
