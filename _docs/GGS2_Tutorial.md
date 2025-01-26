@@ -21,7 +21,7 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
     - Plot depth averaged current velocity data
 4. Model comparison processing
     - Root Mean Square Difference (RMSD) Processing
-        - Generate all not repeating combinations of selected model datasets
+        - Generate all non-repeating combinations of selected model datasets
         - Calculate RMSD
         - Regrid RMSD data to common grid
         - Plot RMSD data
