@@ -55,6 +55,7 @@ def main() -> None:
     save = True  # set to True or False (no quotations)
 
     ############################## INITIALIZE SCRIPT ##################################
+    # test
     print(
         rf"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
