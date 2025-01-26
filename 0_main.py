@@ -49,9 +49,10 @@ VECTOR_TYPE = "streamplot"  # "quiver", "streamplot", or None (no quotations aro
 STREAMLINE_DENSITY = 5  # Higer number = more streamlines
 QUIVER_DOWNSCALING = 4  # Lower number = more dense quivers
 
-SAVE_FIGURES = True  # Set to True or False (no quotations)
+SAVE_FIGURES = True  # set to True or False (no quotations)
 
 
+#######################################################################################
 #######################################################################################
 def main(
     date: str,
