@@ -2,60 +2,111 @@ from models import *
 from functions import *
 from pathfinding import *
 from plotting import *
-
 import itertools
 
+####################################################
+#                                                  #
+#                    PARAMETERS                    #
+#                                                  #
+####################################################
 
-def main() -> None:
+# Subset parameters
+DATE = "2025-01-26"  # format: "YYYY-MM-DD"
+DEPTH = 1100  # keep 1100 to make sure we get the next deepest layer. CMEMS data does not have a layer at 1000 meters
+LAT_MIN = 34  # southern latitude
+LON_MIN = -79  # western longitude
+LAT_MAX = 45  # northern latitude
+LON_MAX = -50  # eastern longitude
+
+# Model selection
+CMEMS_ = True  # European model
+ESPC_ = True  # Navy model
+RTOFS_EAST_ = True  # NOAA model for US east coast
+RTOFS_WEST_ = False  # NOAA model for US west coast
+RTOFS_PARALLEL_ = True  # experimental NOAA model for US east coast
+
+# Pathfinding parameters
+COMPUTE_OPIMTAL_PATH = False  # set to True or False (no quotations)
+WAYPOINTS = [
+    (41.240, -70.958),
+    (37.992, -71.248),
+    (36.943, -66.862),
+    (38.666, -62.978),
+    (39.801, -60.653),
+    (39.618, -55.87),
+]  # [(lat1, lon1), (lat2, lon2), ..., (latx, lonx)]
+GLIDER_RAW_SPEED = 0.5  # m/s. This is the base speed of the glider
+
+# Model combarison parameters
+RMSD = True  # Root mean squared difference. Set to True or False (no quotations)
+
+# Plotting parameters
+MAKE_MAGNITUDE_PLOT = False  # set to True or False (no quotations)
+MAKE_THRESHOLD_PLOT = False  # set to True or False (no quotations)
+MAKE_RMSD_PLOT = True  # set to True or False (no quotations)
+
+VECTOR_TYPE = "streamplot"  # "quiver", "streamplot", or None (no quotations arond None)
+STREAMLINE_DENSITY = 5  # Higer number = more streamlines
+QUIVER_DOWNSCALING = 4  # Lower number = more dense quivers
+
+SAVE_FIGURES = True  # set to True or False (no quotations)
+
+
+#######################################################################################
+#######################################################################################
+def main(
+    date: str,
+    depth: int,
+    lat_min: float,
+    lon_min: float,
+    lat_max: float,
+    lon_max: float,
+    CMEMS_: bool,
+    ESPC_: bool,
+    RTOFS_EAST_: bool,
+    RTOFS_WEST_: bool,
+    RTOFS_PARALLEL_: bool,
+    compute_optimal_path: bool,
+    waypoints: list[tuple[float, float]],
+    glider_raw_speed: float,
+    RMSD: bool,
+    make_magnitude_plot: bool,
+    make_threshold_plot: bool,
+    make_rmsd_plot: bool,
+    vector_type: str,
+    density: int,
+    scalar: int,
+    save: bool,
+) -> None:
     """
     Main entry point for the script.
+
+    Args:
+    ----------
+        - date (str): The date of the glider data in the format "YYYY-MM-DD".
+        - depth (int): The depth of the glider data in meters.
+        - lat_min (float): The minimum latitude of the glider data.
+        - lon_min (float): The minimum longitude of the glider data.
+        - lat_max (float): The maximum latitude of the glider data.
+        - lon_max (float): The maximum longitude of the glider data.
+        - CMEMS_ (bool): Whether to use the CMEMS model.
+        - ESPC_ (bool): Whether to use the ESPC model.
+        - RTOFS_EAST_ (bool): Whether to use the RTOFS model for the US east coast.
+        - RTOFS_WEST_ (bool): Whether to use the RTOFS model for the US west coast.
+        - RTOFS_PARALLEL_ (bool): Whether to use the experimental RTOFS model for the US east coast.
+        - compute_optimal_path (bool): Whether to compute the optimal path.
+        - waypoints (list[tuple[float, float]]): The waypoints to pass into the A* algorithm.
+        - glider_raw_speed (float): The raw speed of the glider in meters per second.
+        - RMSD (bool): Whether to calculate the root mean squared difference.
+        - make_magnitude_plot (bool): Whether to make a magnitude plot.
+        - make_threshold_plot (bool): Whether to make a threshold plot.
+        - make_rmsd_plot (bool): Whether to make an RMSD plot.
+        - vector_type (str): The type of vector to plot. Can be "quiver", "streamplot", or None.
+        - density (int): The density of the streamlines.
+        - scalar (int): The scalar for the quiver plots.
+        - save (bool): Whether to save the plots.
     """
-    ############################## PARAMETERS ##############################
-
-    # Dataset parameters
-    date = "2025-01-26"  # format: "YYYY-MM-DD"
-    depth = 1100  # keep 1100 to make sure we get the next deepest layer. CMEMS data does not have a layer at 1000 meters
-    lat_min = 34
-    lon_min = -79
-    lat_max = 45
-    lon_max = -50
-
-    # Model selection
-    CMEMS_ = True  # European model
-    ESPC_ = True  # Navy model
-    RTOFS_EAST_ = True  # NOAA model for US east coast
-    RTOFS_WEST_ = False  # NOAA model for US west coast
-    RTOFS_PARALLEL_ = True  # experimental NOAA model for US east coast
-
-    # Pathfinding parameters
-    compute_optimal_path = False
-    waypoints = [
-        (41.240, -70.958),
-        (37.992, -71.248),
-        (36.943, -66.862),
-        (38.666, -62.978),
-        (39.801, -60.653),
-        (39.618, -55.87),
-    ]
-    glider_raw_speed = 0.5  # m/s. This is the base speed of the glider
-
-    # Model combarison parameters
-    RMSD = True  # Root mean squared difference. Set to True or False (no quotations)
-
-    # Plotting parameters
-    make_magnitude_plot = False  # set to True or False (no quotations)
-    make_threshold_plot = False  # set to True or False (no quotations)
-    make_rmsd_plot = True  # set to True or False (no quotations)
-
-    # "quiver", "streamplot", or None (no quotations arond None)
-    vector_type = "quiver"
-    density = 5  # Used for streamlines. Higer number = more streamlines
-    scalar = 4  # Used for quiver plots. Lower number = more dense quivers
-
-    save = True  # set to True or False (no quotations)
-
     ############################## INITIALIZE SCRIPT ##################################
-    # test
     print(
         rf"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
@@ -83,24 +134,24 @@ def main() -> None:
     )
     print(f"Date: {date}")
     print(f"Depth: {depth} meters")
-    print(f"Lat bounds: {lat_min} to {lat_max}")
-    print(f"Lon bounds: {lon_min} to {lon_max}")
+    print(f"Southwest Bound: ({lat_min}°,{lon_min}°)")
+    print(f"Northeast Bound: ({lat_max}°,{lon_max}°)")
     print(f"CMEMS: {CMEMS_}")
     print(f"ESPC: {ESPC_}")
     print(f"RTOFS (East Coast): {RTOFS_EAST_}")
     print(f"RTOFS (West Coast): {RTOFS_WEST_}")
     print(f"RTOFS (Parallel): {RTOFS_PARALLEL_}")
-    print(f"Compute optimal path: {compute_optimal_path}")
+    print(f"Compute Optimal Path: {compute_optimal_path}")
     print(f"Waypoints: {waypoints}")
-    print(f"Raw glider speed: {glider_raw_speed} m/s")
+    print(f"Raw Glider Speed: {glider_raw_speed} m/s")
     print(f"RMSD: {RMSD}")
-    print(f"Make magnitude plot: {make_magnitude_plot}")
-    print(f"Make threshold plot: {make_threshold_plot}")
-    print(f"Make RMSD plot: {make_rmsd_plot}")
-    print(f"Vector type: {vector_type}")
-    print(f"Density: {density}")
-    print(f"Scalar: {scalar}")
-    print(f"Save: {save}")
+    print(f"Make Magnitude Plot: {make_magnitude_plot}")
+    print(f"Make Mangitude Threshold Plot: {make_threshold_plot}")
+    print(f"Make RMSD Plot: {make_rmsd_plot}")
+    print(f"Vector Type: {vector_type}")
+    print(f"Streamline Density: {density}")
+    print(f"Quiver Downscale Value: {scalar}")
+    print(f"Save Figures: {save}")
     print("----------------------------\n")
 
     print("Starting script...")
@@ -267,4 +318,27 @@ def main() -> None:
 
 if __name__ == "__main__":
     # TODO: add parallel processing
-    main()
+    main(
+        date=DATE,
+        depth=DEPTH,
+        lat_min=LAT_MIN,
+        lon_min=LON_MIN,
+        lat_max=LAT_MAX,
+        lon_max=LON_MAX,
+        CMEMS_=CMEMS_,
+        ESPC_=ESPC_,
+        RTOFS_EAST_=RTOFS_EAST_,
+        RTOFS_WEST_=RTOFS_WEST_,
+        RTOFS_PARALLEL_=RTOFS_PARALLEL_,
+        compute_optimal_path=COMPUTE_OPIMTAL_PATH,
+        waypoints=WAYPOINTS,
+        glider_raw_speed=GLIDER_RAW_SPEED,
+        RMSD=RMSD,
+        make_magnitude_plot=MAKE_MAGNITUDE_PLOT,
+        make_threshold_plot=MAKE_THRESHOLD_PLOT,
+        make_rmsd_plot=MAKE_RMSD_PLOT,
+        vector_type=VECTOR_TYPE,
+        density=STREAMLINE_DENSITY,
+        scalar=QUIVER_DOWNSCALING,
+        save=SAVE_FIGURES,
+    )
