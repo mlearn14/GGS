@@ -81,7 +81,7 @@ class CMEMS:
         Args:
         ----------
             - dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+            - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
             - depth (int, optional): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
             - diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
@@ -94,12 +94,19 @@ class CMEMS:
         date_min, date_max = dates
         lat_min, lon_min, lat_max, lon_max = extent
 
-        # subset the data using the xarray .sel selector
-        self.subset_data = self.raw_data.sel(
+        # subset the data for time, lon, lat
+        subset_data = self.raw_data.sel(
             time=slice(date_min, date_max),
-            depth=slice(0, depth),
             lon=slice(lon_min, lon_max),
             lat=slice(lat_min, lat_max),
+        )
+
+        # find the index of the next greatest depth value
+        depth_idx = np.searchsorted(subset_data.depth.values, depth, side="right")
+
+        # subset the data using the xarray .sel selector
+        self.subset_data = subset_data.sel(
+            depth=slice(0, subset_data.depth.values[depth_idx])
         )
 
         self.subset_data = self.subset_data.chunk("auto")
@@ -165,7 +172,7 @@ class ESPC:
         Args:
         ----------
             - dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+            - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
             - depth (int, optional): The maximum depth in meters. Defaults to 1000.
             - diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
@@ -180,11 +187,18 @@ class ESPC:
         lat_min, lon_min, lat_max, lon_max = extent
 
         # subset the data using the xarray .sel selector
-        self.subset_data = self.raw_data.sel(
+        subset_data = self.raw_data.sel(
             time=slice(date_min, date_max),
-            depth=slice(0, depth),
             lon=slice(lon_min, lon_max),
             lat=slice(lat_min, lat_max),
+        )
+
+        # find the index of the next greatest depth value
+        depth_idx = np.searchsorted(subset_data.depth.values, depth, side="right")
+
+        # subset the data using the xarray .sel selector
+        self.subset_data = subset_data.sel(
+            depth=slice(0, subset_data.depth.values[depth_idx])
         )
 
         self.subset_data = self.subset_data.chunk("auto")
@@ -304,7 +318,7 @@ class RTOFS:
         Args:
         ----------
             - dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            - extent (tuple): A tuple of (lon_min, lat_min, lon_max, lat_max) in decimel degrees.
+            - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
             - depth (int, optional): The maximum depth in meters. Defaults to 1000.
 
         Returns:
@@ -317,9 +331,16 @@ class RTOFS:
         date_min, date_max = dates
         lat_min, lon_min, lat_max, lon_max = extent
 
+        # subset for time
+        self.subset_data = self.raw_data.sel(time=slice(date_min, date_max))
+
+        # subset for depth
+        # find the index of the next greatest depth value
+        depth_idx = np.searchsorted(self.subset_data.depth.values, depth, side="right")
+
         # subset the data using the xarray .sel selector
-        self.subset_data = self.raw_data.sel(
-            time=slice(date_min, date_max), depth=slice(0, depth)
+        self.subset_data = self.subset_data.sel(
+            depth=slice(0, self.subset_data.depth.values[depth_idx])
         )
 
         # subset the data to the specified area. RTOFS is weird and uses a different indexing scheme
