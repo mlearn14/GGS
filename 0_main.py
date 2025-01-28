@@ -12,7 +12,7 @@ import itertools
 
 # Subset parameters
 DATE = "2025-01-26"  # format: "YYYY-MM-DD"
-DEPTH = 1100  # keep 1100 to make sure we get the next deepest layer. CMEMS data does not have a layer at 1000 meters
+DEPTH = 1000  # working depth of glider model
 LAT_MIN = 34  # southern latitude
 LON_MIN = -79  # western longitude
 LAT_MAX = 45  # northern latitude
@@ -26,7 +26,7 @@ RTOFS_WEST_ = False  # NOAA model for US west coast
 RTOFS_PARALLEL_ = True  # experimental NOAA model for US east coast
 
 # Pathfinding parameters
-COMPUTE_OPIMTAL_PATH = False  # set to True or False (no quotations)
+COMPUTE_OPIMTAL_PATH = True  # set to True or False (no quotations)
 WAYPOINTS = [
     (41.240, -70.958),
     (37.992, -71.248),
@@ -41,8 +41,8 @@ GLIDER_RAW_SPEED = 0.5  # m/s. This is the base speed of the glider
 RMSD = True  # Root mean squared difference. Set to True or False (no quotations)
 
 # Plotting parameters
-MAKE_MAGNITUDE_PLOT = False  # set to True or False (no quotations)
-MAKE_THRESHOLD_PLOT = False  # set to True or False (no quotations)
+MAKE_MAGNITUDE_PLOT = True  # set to True or False (no quotations)
+MAKE_THRESHOLD_PLOT = True  # set to True or False (no quotations)
 MAKE_RMSD_PLOT = True  # set to True or False (no quotations)
 
 VECTOR_TYPE = "streamplot"  # "quiver", "streamplot", or None (no quotations arond None)
@@ -122,7 +122,7 @@ def main(
           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
                                     Glider Guidance System 2
-                                          Version 1.0.1
+                                          Version 1.0.2
                                     Created by Matthew Learn
 
                       Need help? Send an email to matt.learn@marine.rutgers.edu

@@ -391,6 +391,10 @@ def compute_a_star_path(
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
 
+    # Ensure data/mission_statistics directory exists
+    dir = "data/mission_statistics"
+    os.makedirs(dir, exist_ok=True)
+
     # Initialize a list to store the CSV data
     csv_data = [
         ("Segment Start", "Segment End", "Segment Time (s)", "Segment Distance (m)")
@@ -451,9 +455,7 @@ def compute_a_star_path(
     print(f"Total mission distance: {total_distance} meters")
 
     # Define the path for the CSV file
-    csv_file_path = os.path.join(
-        "data/mission_statistics", f"{model_name}_mission_statistics.csv"
-    )
+    csv_file_path = os.path.join(dir, f"{model_name}_mission_statistics.csv")
     # Open the CSV file and write the data to it
     with open(csv_file_path, "w", newline="") as file:
         writer = csv.writer(file)
