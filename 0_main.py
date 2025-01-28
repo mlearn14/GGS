@@ -12,7 +12,7 @@ import itertools
 
 # Subset parameters
 DATE = "2025-01-26"  # format: "YYYY-MM-DD"
-DEPTH = 1100  # keep 1100 to make sure we get the next deepest layer. CMEMS data does not have a layer at 1000 meters
+DEPTH = 1000  # working depth of glider model
 LAT_MIN = 34  # southern latitude
 LON_MIN = -79  # western longitude
 LAT_MAX = 45  # northern latitude
