@@ -246,24 +246,24 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
 
     Returns:
     ----------
-        - ds (xr.Dataset): The model data with a new variable 'magnitude'.
+        - data_mag (xr.Dataset): The model data with a new variable 'magnitude'.
     """
-    ds = model.z_interpolated_data
+    data = model.da_data
 
-    text_name = ds.attrs["text_name"]
-    model_name = ds.attrs["model_name"]
+    text_name = data.attrs["text_name"]
+    model_name = data.attrs["model_name"]
 
     if diag_text:
         print(f"{text_name}: Calculating magnitude...")
         starttime = print_starttime()
 
     # Calculate magnitude (derived from Pythagoras)
-    magnitude = np.sqrt(ds["u"] ** 2 + ds["v"] ** 2)
+    magnitude = np.sqrt(data["u"] ** 2 + data["v"] ** 2)
 
     magnitude.attrs["text_name"] = text_name
     magnitude.attrs["model_name"] = model_name
-    ds = ds.assign(magnitude=magnitude)
-    ds = ds.chunk("auto")  # just to make sure
+    data = data.assign(magnitude=magnitude)
+    data = data.chunk("auto")  # just to make sure
 
     if diag_text:
         print("Done.")
@@ -271,7 +271,7 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
         print_runtime(starttime, endtime)
         print()
 
-    return ds
+    return data
 
 
 def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
@@ -343,6 +343,15 @@ def calculate_rmsd(data1, data2, regrid: bool = True) -> xr.DataArray:
         data2 = regrid_ds(data2, data1, diag_text=False)  # regrid model2 to model1.
 
     # Calculate RMSD
+    u_diff = data1.u - data2.u
+    v_diff = data1.v - data2.v
+
+    u_rmsd = np.sqrt(np.square(u_diff).mean(dim="depth"))
+    v_rmsd = np.sqrt(np.square(v_diff).mean(dim="depth"))
+    mag_rmsd = np.sqrt(u_rmsd**2 + v_rmsd**2)
+
+    # rmsd = xr.Dataset({'u': u_rmsd,})
+
     diff = data1.magnitude - data2.magnitude
     rmsd = np.sqrt(np.square(diff).mean(dim="depth"))
 

@@ -196,32 +196,24 @@ def main(
 
     # make an instance of ESPC so that it can be regridded to the RTOFS dataset
     try:
-        temp = ESPC()
-        temp.load(diag_text=False)
-        temp.raw_data.attrs["text_name"] = "COMMON GRID"
-        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
-        today = datetime.today().strftime("%Y-%m-%d")
-        temp.subset((today, today), extent, depth, diag_text=False)
-        temp.subset_data = temp.subset_data.isel(time=0)
-        temp.z_interpolated_data = interpolate_depth(temp, depth, diag_text=False)
-        temp.z_interpolated_data = calculate_magnitude(temp, diag_text=False)
-        temp.da_data = depth_average(temp, diag_text=False)
-    except Exception as e:
-        print(
-            f"ERROR: Failed to process ESPC {temp.raw_data.attrs['text_name']} data due to: {e}\n"
-        )
-        print("Processing CMEMS COMMON GRID instead...")
-
         temp = CMEMS()
         temp.load(diag_text=False)
         temp.raw_data.attrs["text_name"] = "COMMON GRID"
         temp.raw_data.attrs["model_name"] = "COMMON_GRID"
         today = datetime.today().strftime("%Y-%m-%d")
         temp.subset((today, today), extent, depth, diag_text=False)
-        temp.subset_data = temp.subset_data.isel(time=0)
-        temp.z_interpolated_data = interpolate_depth(temp, depth, diag_text=False)
-        temp.z_interpolated_data = calculate_magnitude(temp, diag_text=False)
-        temp.da_data = depth_average(temp, diag_text=False)
+    except Exception as e:
+        print(f"ERROR: Failed to process CMEMS COMMON GRID data due to: {e}\n")
+        print("Processing ESPC COMMON GRID instead...")
+
+        temp = ESPC()
+        temp.load(diag_text=False)
+        temp.raw_data.attrs["text_name"] = "COMMON GRID"
+        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
+        today = datetime.today().strftime("%Y-%m-%d")
+        temp.subset((today, today), extent, depth, diag_text=False)
+
+    COMMON_GRID = temp.subset_data
 
     for model in model_list:
         # load data
@@ -235,11 +227,10 @@ def main(
 
             # process data
             model.subset(dates, extent, depth)  # subset
-            model.subset_data = model.subset_data.isel(time=0)
+            model.subset_data = regrid_ds(model.subset_data.isel(time=0), COMMON_GRID)
             model.z_interpolated_data = interpolate_depth(model, depth)
-            model.z_interpolated_data = calculate_magnitude(model)
             model.da_data = depth_average(model)
-            model.xy_interpolated_data = regrid_ds(model.da_data, temp.da_data)
+            model.da_data = calculate_magnitude(model)
 
             # pathfinding
             if compute_optimal_path:
