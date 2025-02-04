@@ -11,7 +11,7 @@ import itertools
 ####################################################
 
 # Subset parameters
-DATE = "2025-02-03"  # format: "YYYY-MM-DD"
+DATE = datetime.today().strftime("%Y-%m-%d")  # format: "YYYY-MM-DD"
 DEPTH = 1000  # working depth of glider model
 LAT_MIN = 34  # southern latitude
 LON_MIN = -79  # western longitude
@@ -39,10 +39,11 @@ GLIDER_RAW_SPEED = 0.5  # m/s. This is the base speed of the glider
 
 # Model combarison parameters
 SIMPLE_MEAN = True  # Mean of all selected models. Set to True or False (no quotations)
+MEAN_DIFFERENCES = True  # Mean of differences of all selected models. Set to True or False (no quotations)
 RMSD = True  # Root mean squared difference. Set to True or False (no quotations)
 
 # Plotting parameters
-MAKE_INDIVIDUAL_PLOTS = True  # Make plots of individual model products. set to True or False (no quotations)
+INDIVIDUAL_PLOTS = True  # Make plots of individual model products. set to True or False (no quotations)
 MAKE_MAGNITUDE_PLOT = True  # set to True or False (no quotations)
 MAKE_THRESHOLD_PLOT = True  # set to True or False (no quotations)
 
@@ -71,6 +72,7 @@ def main(
     waypoints: list[tuple[float, float]],
     glider_raw_speed: float,
     SIMPLE_MEAN: bool,
+    MEAN_DIFFERENCES: bool,
     RMSD: bool,
     make_individual_plots: bool,
     make_magnitude_plot: bool,
@@ -100,6 +102,7 @@ def main(
         - waypoints (list[tuple[float, float]]): The waypoints to pass into the A* algorithm.
         - glider_raw_speed (float): The raw speed of the glider in meters per second.
         - SIMPLE_MEAN (bool): Whether to calculate the simple mean of all selected model combinations and plot.
+        - MEAN_DIFFERENCES (bool): Whether to calculate the mean of the differences of each non-repeating pair of models.
         - RMSD (bool): Whether to calculate the root mean squared difference.
         - make_individual_plots (bool): Whether to make individual plots.
         - make_magnitude_plot (bool): Whether to make a magnitude plot.
@@ -308,6 +311,12 @@ def main(
             )
 
     # Calculate mean difference for all selected models
+    if MEAN_DIFFERENCES:
+        try:
+            mean_diff = calculate_mean_diff(model_list)
+            create_map(mean_diff, extent, "mean_diff", None, density, scalar, save=save)
+        except Exception as e:
+            print(f"ERROR: Failed to calculate mean differences due to: {e}\n")
 
     # Calculate the RMSD for every non-repeating model combination
     if RMSD:
@@ -349,8 +358,9 @@ if __name__ == "__main__":
         waypoints=WAYPOINTS,
         glider_raw_speed=GLIDER_RAW_SPEED,
         SIMPLE_MEAN=SIMPLE_MEAN,
+        MEAN_DIFFERENCES=MEAN_DIFFERENCES,
         RMSD=RMSD,
-        make_individual_plots=MAKE_INDIVIDUAL_PLOTS,
+        make_individual_plots=INDIVIDUAL_PLOTS,
         make_magnitude_plot=MAKE_MAGNITUDE_PLOT,
         make_threshold_plot=MAKE_THRESHOLD_PLOT,
         vector_type=VECTOR_TYPE,

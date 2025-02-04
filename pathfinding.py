@@ -456,6 +456,7 @@ def compute_a_star_path(
     print(f"Total mission distance: {total_distance} meters")
 
     # Define the path for the CSV file
+    # TODO: add date directory!!
     csv_file_path = os.path.join(dir, f"{model_name}_mission_statistics.csv")
     # Open the CSV file and write the data to it
     with open(csv_file_path, "w", newline="") as file:
