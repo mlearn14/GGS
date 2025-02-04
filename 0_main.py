@@ -125,7 +125,7 @@ def main(
           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
                                     Glider Guidance System 2
-                                          Version 1.0.2
+                                          Version 1.1.0
                                     Created by Matthew Learn
 
                       Need help? Send an email to matt.learn@marine.rutgers.edu
@@ -332,6 +332,7 @@ def main(
 
 if __name__ == "__main__":
     # TODO: add parallel processing
+    # TODO: change to .json input
     main(
         date=DATE,
         depth=DEPTH,

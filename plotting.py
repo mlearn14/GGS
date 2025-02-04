@@ -369,7 +369,6 @@ def create_quiverplot(
     -----------
         - **kwargs: Additional keyword arguments to pass to the quiver function.
     """
-    # FIXME: does not work with RTOFS data, even when regridded
     u: xr.DataArray = ds["u"]
     v: xr.DataArray = ds["v"]
 
@@ -577,6 +576,51 @@ def create_rmsd_contours(
     return im
 
 
+def create_mean_diff_contours(
+    ax: object,
+    mean_diff: xr.DataArray,
+    lon2D: np.ndarray,
+    lat2D: np.ndarray,
+    levels: np.ndarray,
+    extend: str = "both",
+    **kwargs,
+) -> object:
+    """
+    Creates a mean difference contour plot.
+
+    Args:
+    -----------
+        - ax (object): Axis object.
+        - mean_diff (xr.DataArray): Mean difference data.
+        - lon2D (np.ndarray): 2D array of longitudes.
+        - lat2D (np.ndarray): 2D array of latitudes.
+        - levels (np.ndarray): Contour levels.
+        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
+
+    Returns:
+    -----------
+        - im (object): Image object.
+
+    Other Parameters:
+    -----------
+        - **kwargs: Additional keyword arguments to pass to the contourf function.
+    """
+    im = ax.contourf(
+        lon2D,
+        lat2D,
+        mean_diff,
+        levels=levels,
+        extend=extend,
+        cmap=cmo.balance,
+        vmin=-0.9,
+        vmax=0.9,
+        transform=ccrs.PlateCarree(),
+        **kwargs,
+    )
+
+    return im
+
+
 # Plotting function
 def populate_fig(
     contour_type: str,
@@ -595,7 +639,7 @@ def populate_fig(
 
     Args:
     -----------
-    - contour_type (str): Type of contour (e.g., 'magnitude', 'threshold', 'rmsd').
+    - contour_type (str): Type of contour (e.g., 'magnitude', 'mean_diff', 'threshold', 'rmsd').
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
         -  NOTE: RTOFS must be regridded prior to being passed to this function for quiver to work.
     - fig (object): Figure object.
@@ -636,8 +680,13 @@ def populate_fig(
         levels = np.linspace(0, 0.9, 10)
         contourf = create_magnitude_contours(ax, data.magnitude, lon2D, lat2D, levels)
         cax = create_cbar(fig, ax, contourf, label)
+    elif contour_type == "mean_diff":
+        plot_title = "Depth Averaged Current Mean Differences"
+        label = r"Mean Difference ($\mathregular{ms^{-1}}$)"
+        levels = np.linspace(-0.5, 0.5, 10)
+        contourf = create_mean_diff_contours(ax, data.magnitude, lon2D, lat2D, levels)
+        cax = create_cbar(fig, ax, contourf, label)
     elif contour_type == "rmsd":
-        # data should be an xr.dataarray
         plot_title = "Depth Averaged Root Mean Square Differences (RMSD)"
         label = r"RMSD ($\mathregular{ms^{-1}}$)"
         levels = np.linspace(0, 0.9, 10)
@@ -704,7 +753,7 @@ def create_map(
     ----------
     - data (Dataset): Data to be plotted.
     - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-    - contour_type (str): Type of contour (e.g., 'magnitude', 'threshold', 'rmsd').
+    - contour_type (str): Type of contour (e.g., 'magnitude', mean_diff', 'threshold', 'rmsd').
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
     - density (int): Density of streamlines. Defaults to 5.
     - scalar (int): Scalar for subsampling data. Defaults to 4.
@@ -739,11 +788,13 @@ def create_map(
 
     if contour_type == "rmsd":
         contour_text = "RMSD"
+    elif contour_type == "mean_diff":
+        contour_text = "mean difference"
     else:
         contour_text = contour_type
 
     print(
-        f"{text_name}: Creating {vector_text} plot of depth averaged current {contour_type}s..."
+        f"{text_name}: Creating {vector_text} plot of depth averaged current {contour_text}s..."
     )
     starttime = print_starttime()
 

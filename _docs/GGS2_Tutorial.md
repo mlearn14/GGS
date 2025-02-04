@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.0.2
+Last updated for v1.1.0
 
 ## Overview
 
@@ -53,9 +53,10 @@ Here is a list of all parameters and what they do:
 | COMPUTE_OPTIMAL_PATH | boolean | True - False | Compute the optimal path using an A* algorithm |
 | waypoints | list(tuple) | [(lat1, lon1), ..., (latx, lonx)] | List of coordinates to pass into the A* algorithm. Minimum of 2 points are required |
 | glider_raw_speed | float | --- | Raw speed of glider model |
+| INDIVIDUAL_PLOTS | boolean | True - False | Make plots of individual model products |
 | SIMPLE_MEAN | boolean | True - False | Calculate the simple mean of all selected model combinations and plot |
+| MEAN_DIFFERENCES | boolean | True - False | Calculate the mean of the differences of each non-repeating pair of models |
 | RMSD | boolean | True - False | Calculate the root mean square difference between all selected model combinations and plot |
-| make_individual_plots | boolean | True - False | Make plots of individual model products |
 | make_magnitude_plot | boolean | True - False | Make a plot of depth averaged current magnitude contours |
 | make_threshold_plot | boolean | True - False | Make a plot of depth averaged current magnitude threshold contours |
 | vector_type | string | "quiver", "streamplot", None | Determines the vector type of the plot to show current direction |

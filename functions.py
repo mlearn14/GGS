@@ -2,6 +2,7 @@
 
 import datetime as dt
 from datetime import datetime
+import itertools
 import math
 import numpy as np
 import os
@@ -349,19 +350,32 @@ def calculate_simple_mean(model_list: list[object]) -> xr.Dataset:
     return simple_mean
 
 
-def calculate_mean_difference(ds_list: list[xr.Dataset]) -> xr.Dataset:
+def calculate_mean_diff(model_list: list[object]) -> xr.Dataset:
     """
-    Calculates the mean difference between a list of datasets. Returns a single xr.Dataset of the mean differences.
+    Calculates the mean of the differences of each non-repeating pair of models from the passed list of datasets.
+    Returns a single xr.Dataset of the mean differences.
 
     Args:
     ----------
-        - ds_list (list[xr.Dataset]): A list of xr.Datasets.
+        - model_list (list[object]): A list of xr.Datasets.
 
     Returns:
     ----------
-        - mean_diff (xr.Dataset): The mean difference between the list of datasets.
+        - mean_diff (xr.Dataset): The mean difference of all selected models.
     """
-    length = len(ds_list)
-    total = sum(ds_list)
+    datasets = [model.da_data for model in model_list]
+    model_names = "_".join([dataset.attrs["model_name"] for dataset in datasets])
+    text_names = ", ".join([dataset.attrs["text_name"] for dataset in datasets])
 
-    # TODO: find code that goes through every dataset combination. Is in a coding assignment!
+    ds_combos = list(itertools.combinations(datasets, r=2))
+
+    diff_list = []
+    for ds1, ds2 in ds_combos:
+        diff_list.append(ds1 - ds2)
+
+    combined_ds = xr.concat(diff_list, dim="datasets", coords="minimal")
+    mean_diff = combined_ds.mean(dim="datasets")
+    mean_diff.attrs["model_name"] = f"{model_names}_meandiff"
+    mean_diff.attrs["text_name"] = f"Mean Difference [{text_names}]"
+
+    return mean_diff
