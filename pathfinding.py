@@ -10,7 +10,7 @@ from functions import *
 
 
 def compute_a_star_path(
-    waypoints_list: list[tuple], ds: object, glider_raw_speed: float = 0.5
+    waypoints_list: list[tuple], model: object, glider_raw_speed: float = 0.5
 ) -> list:
     """
     Calculates the optimal path between waypoints for a mission, considering the impact of ocean currents and distance.
@@ -19,7 +19,7 @@ def compute_a_star_path(
     ----------
         - waypoints_list (list): A list of latitude and longitude tuples representing the waypoints.
             - List format: [(lat1, lon1), (lat2, lon2), ...]
-        - ds (DataSet): An xarray dataset containing depth-averaged ocean current data.
+        - model (object): Model object.
         - glider_raw_speed (float, optional): The glider's base speed in meters per second. Defaults to 0.5.
 
     Returns:
@@ -387,6 +387,7 @@ def compute_a_star_path(
 
     ### MAIN FUNCTION CODE ###
     # Define variables
+    ds = model.da_data
     ds = ds.load()  # load the data. if chunked, the algorithm will run incredibly slow!
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]

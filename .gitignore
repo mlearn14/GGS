@@ -1,6 +1,7 @@
 # local ignores
 data/*
 figures/*
+0_debugging.ipynb
 streamlit_test.py
 streamlit_function.py
 ggsdashboard.py

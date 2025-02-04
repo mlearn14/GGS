@@ -11,7 +11,7 @@ import itertools
 ####################################################
 
 # Subset parameters
-DATE = "2025-01-26"  # format: "YYYY-MM-DD"
+DATE = "2025-02-03"  # format: "YYYY-MM-DD"
 DEPTH = 1000  # working depth of glider model
 LAT_MIN = 34  # southern latitude
 LON_MIN = -79  # western longitude
@@ -38,12 +38,13 @@ WAYPOINTS = [
 GLIDER_RAW_SPEED = 0.5  # m/s. This is the base speed of the glider
 
 # Model combarison parameters
+SIMPLE_MEAN = True  # Mean of all selected models. Set to True or False (no quotations)
 RMSD = True  # Root mean squared difference. Set to True or False (no quotations)
 
 # Plotting parameters
+MAKE_INDIVIDUAL_PLOTS = True  # Make plots of individual model products. set to True or False (no quotations)
 MAKE_MAGNITUDE_PLOT = True  # set to True or False (no quotations)
 MAKE_THRESHOLD_PLOT = True  # set to True or False (no quotations)
-MAKE_RMSD_PLOT = True  # set to True or False (no quotations)
 
 VECTOR_TYPE = "streamplot"  # "quiver", "streamplot", or None (no quotations arond None)
 STREAMLINE_DENSITY = 5  # Higer number = more streamlines
@@ -69,10 +70,11 @@ def main(
     compute_optimal_path: bool,
     waypoints: list[tuple[float, float]],
     glider_raw_speed: float,
+    SIMPLE_MEAN: bool,
     RMSD: bool,
+    make_individual_plots: bool,
     make_magnitude_plot: bool,
     make_threshold_plot: bool,
-    make_rmsd_plot: bool,
     vector_type: str,
     density: int,
     scalar: int,
@@ -97,10 +99,11 @@ def main(
         - compute_optimal_path (bool): Whether to compute the optimal path.
         - waypoints (list[tuple[float, float]]): The waypoints to pass into the A* algorithm.
         - glider_raw_speed (float): The raw speed of the glider in meters per second.
+        - SIMPLE_MEAN (bool): Whether to calculate the simple mean of all selected model combinations and plot.
         - RMSD (bool): Whether to calculate the root mean squared difference.
+        - make_individual_plots (bool): Whether to make individual plots.
         - make_magnitude_plot (bool): Whether to make a magnitude plot.
         - make_threshold_plot (bool): Whether to make a threshold plot.
-        - make_rmsd_plot (bool): Whether to make an RMSD plot.
         - vector_type (str): The type of vector to plot. Can be "quiver", "streamplot", or None.
         - density (int): The density of the streamlines.
         - scalar (int): The scalar for the quiver plots.
@@ -144,10 +147,11 @@ def main(
     print(f"Compute Optimal Path: {compute_optimal_path}")
     print(f"Waypoints: {waypoints}")
     print(f"Raw Glider Speed: {glider_raw_speed} m/s")
+    print(f"Simple Mean: {SIMPLE_MEAN}")
     print(f"RMSD: {RMSD}")
+    print(f"Make Individual Plots: {make_individual_plots}")
     print(f"Make Magnitude Plot: {make_magnitude_plot}")
     print(f"Make Mangitude Threshold Plot: {make_threshold_plot}")
-    print(f"Make RMSD Plot: {make_rmsd_plot}")
     print(f"Vector Type: {vector_type}")
     print(f"Streamline Density: {density}")
     print(f"Quiver Downscale Value: {scalar}")
@@ -185,7 +189,6 @@ def main(
     contour_select_dict = {
         "magnitude": make_magnitude_plot,
         "threshold": make_threshold_plot,
-        "rmsd": make_rmsd_plot,
     }
     contour_type = [
         contour for contour, selected in contour_select_dict.items() if selected
@@ -235,37 +238,38 @@ def main(
             # pathfinding
             if compute_optimal_path:
                 optimal_paths[model] = compute_a_star_path(
-                    waypoints, model.xy_interpolated_data, glider_raw_speed
+                    waypoints, model, glider_raw_speed
                 )
             else:
                 optimal_paths[model] = None
                 waypoints = None
 
             # plot da_data
-            if "magnitude" in contour_type:
-                create_map(
-                    model.xy_interpolated_data,
-                    extent,
-                    "magnitude",
-                    vector_type,
-                    density,
-                    scalar,
-                    optimal_paths[model],
-                    waypoints,
-                    save=save,
-                )
-            if "threshold" in contour_type:
-                create_map(
-                    model.xy_interpolated_data,
-                    extent,
-                    "threshold",
-                    vector_type,
-                    density,
-                    scalar,
-                    optimal_paths[model],
-                    waypoints,
-                    save=save,
-                )
+            if make_individual_plots:
+                if "magnitude" in contour_type:
+                    create_map(
+                        model.da_data,
+                        extent,
+                        "magnitude",
+                        vector_type,
+                        density,
+                        scalar,
+                        optimal_paths[model],
+                        waypoints,
+                        save=save,
+                    )
+                if "threshold" in contour_type:
+                    create_map(
+                        model.da_data,
+                        extent,
+                        "threshold",
+                        vector_type,
+                        density,
+                        scalar,
+                        optimal_paths[model],
+                        waypoints,
+                        save=save,
+                    )
         except Exception as e:
             print(
                 f"ERROR: Failed to process {model.raw_data.attrs['text_name']} data due to: {e}\n"
@@ -273,29 +277,48 @@ def main(
             continue
 
     ############################## PROCESSING MODEL COMPARISONS ##############################
+    print("############## PROCESSING MODEL COMPARISONS ##############\n")
 
     # Calculate simple means for all selected models
+    if SIMPLE_MEAN:
+        simple_mean = calculate_simple_mean(model_list)
+        if "magnitude" in contour_type:
+            create_map(
+                simple_mean,
+                extent,
+                "magnitude",
+                vector_type,
+                density,
+                scalar,
+                None,
+                None,
+                save=save,
+            )
+        if "threshold" in contour_type:
+            create_map(
+                simple_mean,
+                extent,
+                "threshold",
+                vector_type,
+                density,
+                scalar,
+                None,
+                None,
+                save=save,
+            )
 
     # Calculate mean difference for all selected models
 
     # Calculate the RMSD for every non-repeating model combination
-    if RMSD == True:
-        print("############## PROCESSING MODEL COMPARISONS ##############\n")
+    if RMSD:
         try:
             model_combos = list(itertools.combinations(model_list, r=2))
             # not going to do list comprehension on this because of readability
             rmsd_list = []
             for model1, model2 in model_combos:
-                rmsd = calculate_rmsd(
-                    model1.z_interpolated_data, model2.z_interpolated_data
-                )
-                rmsd_regrid = regrid_ds(rmsd, temp.da_data)
-                rmsd_list.append(rmsd_regrid)
-            if "rmsd" in contour_type:  # this doesnt need to be its own thing?
-                [
-                    create_map(rmsd, extent, "rmsd", None, density, scalar, save=save)
-                    for rmsd in rmsd_list
-                ]
+                rmsd = calculate_rmsd(model1, model2)
+                rmsd_list.append(rmsd)
+                create_map(rmsd, extent, "rmsd", None, density, scalar, save=save)
         except Exception as e:
             print(f"ERROR: Failed to calculate RMSD due to: {e}\n")
 
@@ -324,10 +347,11 @@ if __name__ == "__main__":
         compute_optimal_path=COMPUTE_OPIMTAL_PATH,
         waypoints=WAYPOINTS,
         glider_raw_speed=GLIDER_RAW_SPEED,
+        SIMPLE_MEAN=SIMPLE_MEAN,
         RMSD=RMSD,
+        make_individual_plots=MAKE_INDIVIDUAL_PLOTS,
         make_magnitude_plot=MAKE_MAGNITUDE_PLOT,
         make_threshold_plot=MAKE_THRESHOLD_PLOT,
-        make_rmsd_plot=MAKE_RMSD_PLOT,
         vector_type=VECTOR_TYPE,
         density=STREAMLINE_DENSITY,
         scalar=QUIVER_DOWNSCALING,

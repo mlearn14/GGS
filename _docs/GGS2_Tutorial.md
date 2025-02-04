@@ -53,10 +53,11 @@ Here is a list of all parameters and what they do:
 | COMPUTE_OPTIMAL_PATH | boolean | True - False | Compute the optimal path using an A* algorithm |
 | waypoints | list(tuple) | [(lat1, lon1), ..., (latx, lonx)] | List of coordinates to pass into the A* algorithm. Minimum of 2 points are required |
 | glider_raw_speed | float | --- | Raw speed of glider model |
-| RMSD | boolean | True - False | Calculate the root mean square difference between all selected model combinations |
+| SIMPLE_MEAN | boolean | True - False | Calculate the simple mean of all selected model combinations and plot |
+| RMSD | boolean | True - False | Calculate the root mean square difference between all selected model combinations and plot |
+| make_individual_plots | boolean | True - False | Make plots of individual model products |
 | make_magnitude_plot | boolean | True - False | Make a plot of depth averaged current magnitude contours |
 | make_threshold_plot | boolean | True - False | Make a plot of depth averaged current magnitude threshold contours |
-| make_rmsd_plot | boolean | True - False | Make a plot of the root mean squared difference between all model combinations |
 | vector_type | string | "quiver", "streamplot", None | Determines the vector type of the plot to show current direction |
 | density | int | --- | Density of streamlines. Higher number = denser streamlines |
 | scalar | int | --- | Downsampling scalar for quiver plots. Higher number = Less quivers |

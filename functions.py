@@ -92,58 +92,6 @@ def optimal_workers(power: float = 1.0) -> int:
     return num_workers
 
 
-def generate_filename(
-    date: str,
-    plot_type: str,
-    vector_type: str,
-    model_name: str,
-    output_dir: str = "figures",
-) -> str:
-    """
-    Generate a standardized filename for saving figures.
-
-    Args:
-    ----------
-        - date (str): The date in YYYYMMDD format.
-        - figure_type (str): Type of figure (e.g., 'magnitude', 'threshold', 'rmsd').
-        - plot_type (str): Type of plot (e.g., 'streamplot', 'quiverplot', 'none').
-        - model_names (list): Model names(s) (e.g., 'RTOFS', 'CMEMS', 'RTOFS+CMEMS').
-        - output_dir (str, optional): Directory where the file will be saved. Default is 'figures'.
-
-    Returns:
-    ----------
-        - filename (str): Full path for the output file.
-    """
-    # Ensure the output directory exists
-    output_dir = f"{output_dir}/{date}/{plot_type}"
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Construct the file name
-    filename = f"{date}_{model_name}_{plot_type}_{vector_type}.png"
-
-    # Combine directory and file name
-    return os.path.join(output_dir, filename)
-
-
-# debating moving this to plotting.py
-def save_fig(fig: object, filename: str, date: str) -> None:
-    """
-    Save a figure to a file.
-
-    Args:
-    ----------
-        - fig (object): The figure object to be saved.
-        - filename (str): The name of the file to save the figure to.
-
-    Returns:
-    ----------
-        - `None`
-    """
-    print(f"Saving figure to {filename}")
-    fig.savefig(filename, bbox_inches="tight", dpi=300)
-    print("Saved.")
-
-
 def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Dataset:
     """
     Regrids the first dataset to the second dataset.
@@ -235,6 +183,42 @@ def interpolate_depth(
     return ds_interp
 
 
+def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
+    """
+    Gets the depth integrated current velocities from the passed model data.
+
+    Args:
+    ----------
+        - model (object): The model data.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
+
+    Returns:
+    ----------
+        - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
+    """
+    ds = model.z_interpolated_data
+
+    text_name = ds.attrs["text_name"]
+    model_name = ds.attrs["model_name"]
+
+    if diag_text:
+        print(f"{text_name}: Depth averaging...")
+        starttime = print_starttime()
+
+    ds_da = ds.mean(dim="depth", keep_attrs=True)
+
+    ds_da.attrs["text_name"] = text_name
+    ds_da.attrs["model_name"] = model_name
+
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+        print()
+
+    return ds_da
+
+
 def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
     """
     Calculates the magnitude of the model data.
@@ -274,56 +258,25 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
     return data
 
 
-def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
-    """
-    Gets the depth integrated current velocities from the passed model data.
-
-    Args:
-    ----------
-        - model (object): The model data.
-        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
-
-    Returns:
-    ----------
-        - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
-    """
-    ds = model.z_interpolated_data
-
-    text_name = ds.attrs["text_name"]
-    model_name = ds.attrs["model_name"]
-
-    if diag_text:
-        print(f"{text_name}: Depth averaging...")
-        starttime = print_starttime()
-
-    ds_da = ds.mean(dim="depth", keep_attrs=True)
-
-    ds_da.attrs["text_name"] = text_name
-    ds_da.attrs["model_name"] = model_name
-
-    if diag_text:
-        print("Done.")
-        endtime = print_endtime()
-        print_runtime(starttime, endtime)
-        print()
-
-    return ds_da
+# Comparison functions
 
 
-def calculate_rmsd(data1, data2, regrid: bool = True) -> xr.DataArray:
+def calculate_rmsd(model1: object, model2: object, regrid: bool = False) -> xr.Dataset:
     """
     Calculates the root mean squared difference between two datasets.
 
     Args:
     ----------
-        - data1 (xr.Dataset or xr.DataArray): The first dataset/array.
-        - data2 (xr.Dataset or xr.DataArray): The second dataset/array.
-        - regrid (bool, optional): Whether to regrid datasets. Defaults to True.
+        - model1 (object): The first model.
+        - model2 (object): The second model.
+        - regrid (bool, optional): Whether to regrid datasets. Defaults to `False`.
 
     Returns:
     ----------
-        - rmsd (xr.DataArray): The root mean squared difference between the two datasets.
+        - rmsd (xr.Dataset): The root mean squared difference between the two datasets.
     """
+    data1 = model1.z_interpolated_data
+    data2 = model2.z_interpolated_data
     model_list = [data1, data2]
     model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
     data1 = model_list[0]
@@ -343,20 +296,17 @@ def calculate_rmsd(data1, data2, regrid: bool = True) -> xr.DataArray:
         data2 = regrid_ds(data2, data1, diag_text=False)  # regrid model2 to model1.
 
     # Calculate RMSD
-    u_diff = data1.u - data2.u
-    v_diff = data1.v - data2.v
+    delta_u = data1.u - data2.u
+    delta_v = data1.v - data2.v
 
-    u_rmsd = np.sqrt(np.square(u_diff).mean(dim="depth"))
-    v_rmsd = np.sqrt(np.square(v_diff).mean(dim="depth"))
-    mag_rmsd = np.sqrt(u_rmsd**2 + v_rmsd**2)
+    rmsd_u = np.sqrt(np.square(delta_u).mean(dim="depth"))
+    rmsd_v = np.sqrt(np.square(delta_v).mean(dim="depth"))
+    rmsd_mag = np.sqrt(rmsd_u**2 + rmsd_v**2)
 
-    # rmsd = xr.Dataset({'u': u_rmsd,})
-
-    diff = data1.magnitude - data2.magnitude
-    rmsd = np.sqrt(np.square(diff).mean(dim="depth"))
-
-    rmsd.attrs["text_name"] = text_name
-    rmsd.attrs["model_name"] = model_name
+    rmsd = xr.Dataset(
+        {"u": rmsd_u, "v": rmsd_v, "magnitude": rmsd_mag},
+        attrs={"text_name": text_name, "model_name": model_name},
+    )
 
     print("Done.")
     endtime = print_endtime()
@@ -367,21 +317,34 @@ def calculate_rmsd(data1, data2, regrid: bool = True) -> xr.DataArray:
 
 
 # Experimental Functions TODO: implement these
-def calculate_simple_mean(ds_list: list[xr.Dataset]) -> xr.Dataset:
+def calculate_simple_mean(model_list: list[object]) -> xr.Dataset:
     """
     Calculates the simple mean of a list of datasets. Returns a single xr.Dataset of the simple means.
 
     Args:
     ----------
-        - ds_list (list[xr.Dataset]): A list of xr.Datasets.
+        - model_list (list[object]): A list of xr.Datasets.
 
     Returns:
     ----------
         - simple_mean (xr.Dataset): The simple mean of the list of datasets.
     """
-    length = len(ds_list)
-    total = sum(ds_list)
-    simple_mean = total / length
+    print("Calculating simple mean of selected models...")
+    starttime = print_starttime()
+
+    datasets = [model.da_data for model in model_list]
+    model_names = "_".join([dataset.attrs["model_name"] for dataset in datasets])
+    text_names = ", ".join([dataset.attrs["text_name"] for dataset in datasets])
+
+    combined_dataset = xr.concat(datasets, dim="datasets")
+    simple_mean = combined_dataset.mean(dim="datasets")
+    simple_mean.attrs["model_name"] = f"{model_names}_simple_mean"
+    simple_mean.attrs["text_name"] = f"Simple Mean [{text_names}]"
+
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
 
     return simple_mean
 
