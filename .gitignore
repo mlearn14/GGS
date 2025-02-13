@@ -4,6 +4,7 @@ figures/*
 streamlit_test.py
 streamlit_function.py
 ggsdashboard.py
+0_debugging.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
