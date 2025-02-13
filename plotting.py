@@ -85,13 +85,13 @@ def initialize_fig(
 
     fig = plt.figure(figsize=(12, 8))
     # leave some space for colorbar
-    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection=ccrs.Mercator())
+    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection=projection)
 
     cplt.create(
         [lon_min, lon_max, lat_min, lat_max],
         gridlines=True,
         ax=ax,
-        proj=ccrs.Mercator(),
+        proj=projection,
     )
 
     return fig, ax
