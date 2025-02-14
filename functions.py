@@ -260,6 +260,48 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
 
 
 # Comparison functions
+def calculate_simple_diff(model1: object, model2: object) -> xr.Dataset:
+    """
+    Calculates the simple difference between two datasets. Returns a single xr.Dataset of the simple difference.
+
+    Args:
+    ----------
+        - model1 (object): The first model.
+        - model2 (object): The second model.
+
+    Returns:
+    ----------
+        - simple_diff (xr.Dataset): The simple difference between the two datasets.
+    """
+    data1 = model1.da_data
+    data2 = model2.da_data
+    model_list = [data1, data2]
+    model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
+    data1 = model_list[0]
+    data2 = model_list[1]
+
+    text_name1: str = data1.attrs["text_name"]
+    text_name2: str = data2.attrs["text_name"]
+    model_name1: str = data1.attrs["model_name"]
+    model_name2: str = data2.attrs["model_name"]
+    text_name = " & ".join([text_name1, text_name2])
+    model_name = "+".join([model_name1, model_name2])
+
+    print(f"{text_name}: Calculating Simple Difference...")
+    starttime = print_starttime()
+
+    simple_diff = data1 - data2
+    simple_diff.attrs["model_name"] = f"{model_name}_simple_diff"
+    simple_diff.attrs["text_name"] = f"Simple Difference [{text_name}]"
+    simple_diff.attrs["model1_name"] = data1.attrs["text_name"]
+    simple_diff.attrs["model2_name"] = data2.attrs["text_name"]
+
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
+
+    return simple_diff
 
 
 def calculate_rmsd(model1: object, model2: object, regrid: bool = False) -> xr.Dataset:
@@ -317,7 +359,6 @@ def calculate_rmsd(model1: object, model2: object, regrid: bool = False) -> xr.D
     return rmsd
 
 
-# Experimental Functions TODO: implement these
 def calculate_simple_mean(model_list: list[object]) -> xr.Dataset:
     """
     Calculates the simple mean of a list of datasets. Returns a single xr.Dataset of the simple means.
@@ -363,6 +404,9 @@ def calculate_mean_diff(model_list: list[object]) -> xr.Dataset:
     ----------
         - mean_diff (xr.Dataset): The mean difference of all selected models.
     """
+    print("Calculating mean difference of selected models...")
+    starttime = print_starttime()
+
     datasets = [model.da_data for model in model_list]
     model_names = "_".join([dataset.attrs["model_name"] for dataset in datasets])
     text_names = ", ".join([dataset.attrs["text_name"] for dataset in datasets])
@@ -371,11 +415,16 @@ def calculate_mean_diff(model_list: list[object]) -> xr.Dataset:
 
     diff_list = []
     for ds1, ds2 in ds_combos:
-        diff_list.append(ds1 - ds2)
+        diff_list.append(abs(ds1 - ds2))
 
     combined_ds = xr.concat(diff_list, dim="datasets", coords="minimal")
     mean_diff = combined_ds.mean(dim="datasets")
     mean_diff.attrs["model_name"] = f"{model_names}_meandiff"
     mean_diff.attrs["text_name"] = f"Mean Difference [{text_names}]"
+
+    print("Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+    print()
 
     return mean_diff

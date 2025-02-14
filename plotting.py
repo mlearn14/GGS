@@ -442,188 +442,8 @@ def create_streamplot(
     return streamplot
 
 
-def create_magnitude_contours(
-    ax: object,
-    magnitude: xr.DataArray,
-    lon2D: np.ndarray,
-    lat2D: np.ndarray,
-    levels: np.ndarray,
-    extend: str = "max",
-    **kwargs,
-) -> object:
-    """
-    Creates a magnitude contour plot.
-
-    Args:
-    -----------
-        - ax (object): Axis object.
-        - magnitude (xr.DataArray): Magnitude data.
-        - lon2D (np.ndarray): 2D array of longitudes.
-        - lat2D (np.ndarray): 2D array of latitudes.
-        - levels (np.ndarray): Contour levels.
-        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
-
-    Returns:
-    -----------
-        - im (object): Image object.
-
-    Other Parameters:
-    -----------
-        - **kwargs: Additional keyword arguments to pass to the contourf function.
-    """
-    im = ax.contourf(
-        lon2D,
-        lat2D,
-        magnitude,
-        levels=levels,
-        extend=extend,
-        cmap=cmo.speed,
-        transform=ccrs.PlateCarree(),
-        vmin=0,
-        vmax=0.9,
-        **kwargs,
-    )
-
-    return im
-
-
-def create_threshold_contours(
-    ax: object,
-    magnitude: xr.DataArray,
-    lon2D: np.ndarray,
-    lat2D: np.ndarray,
-    levels: list,
-    colors: list,
-    extend: str = "max",
-    **kwargs,
-) -> object:
-    """
-    Creates a threshold contour plot.
-
-    Args:
-    -----------
-        - ax (object): Axis object.
-        - magnitude (xr.DataArray): Magnitude data.
-        - lon2D (np.ndarray): 2D array of longitudes.
-        - lat2D (np.ndarray): 2D array of latitudes.
-        - levels (np.ndarray): Contour levels.
-        - colors (list): List of colors.
-        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
-
-    Returns:
-    -----------
-        - im (object): Image object.
-
-    Other Parameters:
-    -----------
-        - **kwargs: Additional keyword arguments to pass to the contourf function.
-    """
-    im = ax.contourf(
-        lon2D,
-        lat2D,
-        magnitude,
-        levels=levels,
-        extend=extend,
-        colors=colors,
-        transform=ccrs.PlateCarree(),
-        **kwargs,
-    )
-
-    return im
-
-
-def create_rmsd_contours(
-    ax: object,
-    rmsd: xr.DataArray,
-    lon2D: np.ndarray,
-    lat2D: np.ndarray,
-    levels: np.ndarray,
-    extend: str = "max",
-    **kwargs,
-) -> object:
-    """
-    Creates a RMSD contour plot.
-
-    Args:
-    -----------
-        - ax (object): Axis object.
-        - rmsd (xr.DataArray): RMSD data.
-        - lon2D (np.ndarray): 2D array of longitudes.
-        - lat2D (np.ndarray): 2D array of latitudes.
-        - levels (np.ndarray): Contour levels.
-        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
-
-    Returns:
-    -----------
-        - im (object): Image object.
-
-    Other Parameters:
-    -----------
-        - **kwargs: Additional keyword arguments to pass to the contourf function.
-    """
-    im = ax.contourf(
-        lon2D,
-        lat2D,
-        rmsd,
-        levels=levels,
-        extend=extend,
-        cmap=cmo.deep,
-        vmin=0,
-        vmax=0.9,
-        transform=ccrs.PlateCarree(),
-        **kwargs,
-    )
-
-    return im
-
-
-def create_mean_diff_contours(
-    ax: object,
-    mean_diff: xr.DataArray,
-    lon2D: np.ndarray,
-    lat2D: np.ndarray,
-    levels: np.ndarray,
-    extend: str = "both",
-    **kwargs,
-) -> object:
-    """
-    Creates a mean difference contour plot.
-
-    Args:
-    -----------
-        - ax (object): Axis object.
-        - mean_diff (xr.DataArray): Mean difference data.
-        - lon2D (np.ndarray): 2D array of longitudes.
-        - lat2D (np.ndarray): 2D array of latitudes.
-        - levels (np.ndarray): Contour levels.
-        - extend (str): Extend colorbar. Defaults to "max". Takes "min", "max", "both", or "neither".
-
-    Returns:
-    -----------
-        - im (object): Image object.
-
-    Other Parameters:
-    -----------
-        - **kwargs: Additional keyword arguments to pass to the contourf function.
-    """
-    im = ax.contourf(
-        lon2D,
-        lat2D,
-        mean_diff,
-        levels=levels,
-        extend=extend,
-        cmap=cmo.balance,
-        vmin=-0.9,
-        vmax=0.9,
-        transform=ccrs.PlateCarree(),
-        **kwargs,
-    )
-
-    return im
-
-
 # Plotting function
-def populate_fig(
+def populate_map(
     contour_type: str,
     vector_type: str,
     fig: object,
@@ -638,9 +458,10 @@ def populate_fig(
     """
     Populates a figure with contours and/or vectors.
 
-    Args:
+    Arg:
     -----------
-    - contour_type (str): Type of contour (e.g., 'magnitude', 'mean_diff', 'threshold', 'rmsd').
+    - contour_type (str): Type of contour.
+        - Options: 'magnitude', 'threshold', 'simple_diff', 'mean_diff', 'rmsd', 'mean_magnitude', & 'mean_threshold'
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
         -  NOTE: RTOFS must be regridded prior to being passed to this function for quiver to work.
     - fig (object): Figure object.
@@ -679,26 +500,108 @@ def populate_fig(
         plot_title = "Depth Averaged Current Magnitudes"
         label = r"Magnitude ($\mathregular{ms^{-1}}$)"
         levels = np.linspace(0, 0.9, 10)
-        contourf = create_magnitude_contours(ax, data.magnitude, lon2D, lat2D, levels)
+
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            extend="max",
+            cmap=cmo.speed,
+        )
         cax = create_cbar(fig, ax, contourf, label)
+
     elif contour_type == "mean_diff":
         plot_title = "Depth Averaged Current Mean Differences"
         label = r"Mean Difference ($\mathregular{ms^{-1}}$)"
-        levels = np.linspace(-0.5, 0.5, 10)
-        contourf = create_mean_diff_contours(ax, data.magnitude, lon2D, lat2D, levels)
+        levels = np.linspace(0, 0.9, 10)
+
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            extend="max",
+            cmap=cmo.amp,
+        )
         cax = create_cbar(fig, ax, contourf, label)
+
+    elif contour_type == "mean_magnitude":
+        plot_title = "Depth Averaged Current Means"
+        label = r"Simple Mean ($\mathregular{ms^{-1}}$)"
+        levels = np.linspace(0, 0.9, 10)
+
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            extend="max",
+            cmap=cmo.speed,
+        )
+        cax = create_cbar(fig, ax, contourf, label)
+
+    elif contour_type == "mean_threshold":
+        plot_title = "Depth Averaged Current Mean Thresholds"
+        levels, colors, legend = create_thresholds_levels_legend(ax, data.magnitude)
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            colors=colors,
+        )
+
     elif contour_type == "rmsd":
         plot_title = "Depth Averaged Root Mean Square Differences (RMSD)"
         label = r"RMSD ($\mathregular{ms^{-1}}$)"
         levels = np.linspace(0, 0.9, 10)
-        contourf = create_rmsd_contours(ax, data.magnitude, lon2D, lat2D, levels)
+
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            extend="max",
+            cmap=cmo.deep,
+        )
         cax = create_cbar(fig, ax, contourf, label)
+
+    elif contour_type == "simple_diff":
+        plot_title = "Depth Averaged Current Differences"
+        label = r"Difference ($\mathregular{ms^{-1}}$)"
+        levels = np.linspace(-0.75, 0.75, 11)
+
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            extend="both",
+            cmap=cmo.balance,
+        )
+        cax = create_cbar(fig, ax, contourf, label)
+        ax_pos = ax.get_position()
+        top = ax_pos.y1
+        eq_position = top + 0.05
+        fig.text(0.5, eq_position, f"Difference = {data.attrs['model1_name']} - {data.attrs['model2_name']}", fontsize=15, ha="center", va="center")
+
     elif contour_type == "threshold":
         plot_title = "Depth Averaged Current Thresholds"
-        magnitude = data.magnitude
-        levels, colors, legend = create_thresholds_levels_legend(ax, magnitude)
-        contourf = create_threshold_contours(
-            ax, magnitude, lon2D, lat2D, levels, colors
+        levels, colors, legend = create_thresholds_levels_legend(ax, data.magnitude)
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            colors=colors,
         )
     else:
         raise ValueError(
@@ -806,7 +709,7 @@ def create_map(
         fig = plt.gcf()
         ax = fig.get_axes()[0]
 
-    contourf, legend, cax, quiver, streamplot, path_plot, wp_plot = populate_fig(
+    contourf, legend, cax, quiver, streamplot, path_plot, wp_plot = populate_map(
         contour_type,
         vector_type,
         fig,
