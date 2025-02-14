@@ -331,6 +331,7 @@ def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
         markersize=4,
         transform=ccrs.PlateCarree(),
     )
+    # TODO: make first and last points green and red respectively
     wp_plot = ax.scatter(
         wp_lons,
         wp_lats,
@@ -765,6 +766,7 @@ def create_map(
     Returns:
     ----------
     - fig (object): Figure object.
+    - ax (object): Axis object.
     - contourf (object): Contourf object.
     - legend (object): Legend object.
     - cax (object): Colorbar object.
@@ -829,4 +831,4 @@ def create_map(
     print_runtime(starttime, endtime)
     print()
 
-    return fig, contourf, legend, cax, quiver, streamplot, path_plot, wp_plot
+    return fig, ax, contourf, legend, cax, quiver, streamplot, path_plot, wp_plot
