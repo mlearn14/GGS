@@ -15,6 +15,7 @@ class CMEMS:
 
     Attributes:
     ----------
+        - name (str): Name of the model.
         - raw_data (xr.Dataset): Raw data from CMEMS.
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
@@ -24,6 +25,7 @@ class CMEMS:
 
     def __init__(self) -> None:
         """Initialize the CMEMS instance."""
+        self.name: str = "CMEMS"
         self.raw_data: xr.Dataset = None
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
@@ -121,6 +123,7 @@ class ESPC:
 
     Attributes:
     ----------
+        - name (str): Name of the model.
         - raw_data (xr.Dataset): Raw data from CMEMS.
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
@@ -130,6 +133,7 @@ class ESPC:
 
     def __init__(self) -> None:
         """Initialize the ESPC instance."""
+        self.name: str = "ESPC"
         self.raw_data: xr.Dataset = None
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
@@ -213,6 +217,11 @@ class RTOFS:
 
     Attributes:
     ----------
+        - name (str): Name of the model.
+        - source (str): RTOFS model source. Valid args are: 'east', 'west', and 'parallel'.
+            - 'east' - RTOFS (East Coast)
+            - 'west' - RTOFS (West Coast)
+            - 'parallel' - RTOFS (Experimental version running in parallel with the production version)
         - raw_data (xr.Dataset): Raw data from CMEMS.
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
@@ -220,29 +229,23 @@ class RTOFS:
         - xy_interpolated_data (xr.Dataset): Interpolated data to common grid.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, source: str) -> None:
         """Initialize the RTOFS instance."""
+        source_text = {
+            "east": "East Coast",
+            "west": "West Coast",
+            "parallel": "Parallel",
+        }
+        self.name: str = f"RTOFS ({source_text[source]})"
+        self.source: str = source
         self.raw_data: xr.Dataset = None
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
         self.xy_interpolated_data: xr.Dataset = None
 
-    def load(self, source: str) -> None:
-        """
-        Loads Eastward and Northward current velocities from the RTOFS model. Saves data to self.raw_data attribute.
-
-        Args:
-        ----------
-            - source (str): RTOFS model source. Valid args are: 'east', 'west', and 'parallel'.
-                - 'east' - RTOFS (East Coast)
-                - 'west' - RTOFS (West Coast)
-                - 'parallel' - RTOFS (Experimental version running in parallel with the production version)
-
-        Returns:
-        ----------
-            - `None`
-        """
+    def load(self) -> None:
+        """Loads Eastward and Northward current velocities from the RTOFS model. Saves data to self.raw_data attribute."""
         print("Loading RTOFS data...")
         starttime = print_starttime()
 
@@ -269,15 +272,15 @@ class RTOFS:
         }
 
         # Check if the source is valid
-        if source not in url_dict:
+        if self.source not in url_dict:
             raise ValueError(
-                f"Invalid source: {source}. Must be one of: {list(url_dict.keys())}"
+                f"Invalid source: {self.source}. Must be one of: {list(url_dict.keys())}"
             )
 
         # Get the URL and model name from the dictionaries
-        url = url_dict[source]
-        text_name = text_dict[source]
-        model_name = model_dict[source]
+        url = url_dict[self.source]
+        text_name = text_dict[self.source]
+        model_name = model_dict[self.source]
 
         # Open the dataset using xarray
         ds = xr.open_dataset(url)
