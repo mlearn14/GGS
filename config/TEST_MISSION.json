@@ -1,0 +1,67 @@
+{
+    "MISSION_NAME": "TEST_MISSION",
+
+    "SUBSET": {
+
+        "TIME": {
+            "START_DATE": "2025-02-15T00:00:00Z",
+            "END_DATE": null
+        },
+
+        "EXTENT": {
+            "SW_POINT": [34, -74],
+            "NE_POINT": [45, -50]
+        },
+
+        "MAX_DEPTH": 1000
+    },
+
+    "MODELS": {
+
+        "CMEMS": true,
+        "ESPC": true,
+        "RTOFS_EAST": true,
+        "RTOFS_WEST": false,
+        "RTOFS_PARALLEL": true
+    },
+
+    "PATHFINDING": {
+        "ENABLE": true,
+        "ALGORITHM": "A*",
+        "HEURISTIC": null,
+        "WAYPOINTS": [
+            [41.240, -70.958],
+            [37.992, -71.248],
+            [36.943, -66.862],
+            [38.666, -62.978],
+            [39.801, -60.653],
+            [39.618, -55.87]
+        ],
+        "GLIDER_RAW_SPEED": 0.5
+    },
+
+    "PLOTTING": {
+
+        "INDIVIDUAL_PLOTS": true,
+
+        "COMPARISON_PLOTS": {
+            "SIMPLE_DIFFERENCE": true,
+            "MEAN_DIFFERENCE": false,
+            "SIMPLE_MEAN": false,
+            "RMS_PROFILE_DIFFERENCE": false
+        },
+
+        "PLOT_MAGNITUDES": true,
+        "PLOT_MAGNITUDE_THRESHOLDS": true,
+
+        "PLOT_OPTIMAL_PATH": false,
+
+        "VECTORS": {
+            "TYPE": "streamplot",
+            "STREAMLINE_DENSITY": 5,
+            "QUIVER_DOWNSCALING": 4
+        },
+
+        "SAVE_FIGURES": true
+    }
+}
