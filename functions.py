@@ -11,6 +11,31 @@ import xesmf as xe
 
 
 # Helper functions
+def logo_text() -> None:
+    """Prints the GGS2 logo text."""
+    print(
+        rf"""
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
+ ~~~~~/\\\\\\\\\\\\~~~~~~/\\\\\\\\\\\\~~~~~~/\\\\\\\\\\\~~~~~~~/\\\\\\\\\~~~~~         
+  ~~~/\\\//////////~~~~~/\\\//////////~~~~~/\\\/////////\\\~~~/\\\///////\\\~~~        
+   ~~/\\\~~~~~~~~~~~~~~~/\\\~~~~~~~~~~~~~~~\//\\\~~~~~~\///~~~\///~~~~~~\//\\\~~       
+    ~\/\\\~~~~/\\\\\\\~~\/\\\~~~~/\\\\\\\~~~~\////\\\~~~~~~~~~~~~~~~~~~~~/\\\/~~~      
+     ~\/\\\~~~\/////\\\~~\/\\\~~~\/////\\\~~~~~~~\////\\\~~~~~~~~~~~~~~/\\\//~~~~~     
+      ~\/\\\~~~~~~~\/\\\~~\/\\\~~~~~~~\/\\\~~~~~~~~~~\////\\\~~~~~~~~/\\\//~~~~~~~~    
+       ~\/\\\~~~~~~~\/\\\~~\/\\\~~~~~~~\/\\\~~~/\\\~~~~~~\//\\\~~~~~/\\\/~~~~~~~~~~~   
+        ~\//\\\\\\\\\\\\/~~~\//\\\\\\\\\\\\/~~~\///\\\\\\\\\\\/~~~~~/\\\\\\\\\\\\\\\~  
+         ~~\////////////~~~~~~\////////////~~~~~~~\///////////~~~~~~\///////////////~~ 
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+                                    Glider Guidance System 2
+                                          Version 1.1.0
+                                    Created by Matthew Learn
+
+                      Need help? Send an email to matt.learn@marine.rutgers.edu
+        """
+    )
+
+
 def print_starttime() -> datetime:
     """
     Prints the start time of the script.
@@ -62,6 +87,31 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
     """
     runtime = endtime - starttime
     print(f"Runtime: {runtime}")
+
+
+def ticket_report(params: dict) -> None:
+    params_formatted = params.copy()
+    params_formatted["Models"] = [model.name for model in params_formatted["Models"]]
+
+    print(
+        "----------------------------\nTicket Information:\n----------------------------"
+    )
+    for key, value in params_formatted.items():
+        print(f"{key}: {value}")
+    print("----------------------------\n")
+
+
+def model_raw_report(model: object) -> None:
+    text_name = model.raw_data.attrs["text_name"]
+    model_name = model.raw_data.attrs["model_name"]
+    print(
+        "----------------------------\nModel Raw Report:\n----------------------------"
+    )
+    print(f"Model: {text_name}")
+    print(f"Minimum date: {model.time.min().strftime('%Y-%m-%d')}")
+    print(f"Maximum date: {model.time.max().strftime('%Y-%m-%d')}")
+    # might not need any more data than this tbh
+    print("----------------------------\n")
 
 
 def optimal_workers(power: float = 1.0) -> int:
