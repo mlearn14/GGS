@@ -43,33 +43,39 @@ def main(config_name: str) -> None:
         return
 
     # primary parameter initialization
-    MISSION_NAME = config["MISSION_NAME"]
-    DATES = config["SUBSET"]["TIME"]["START_DATE"], config["SUBSET"]["TIME"]["END_DATE"]
-    EXTENT = config["SUBSET"]["EXTENT"]
-    DEPTH = config["SUBSET"]["MAX_DEPTH"]
+    MISSION_NAME: str = config["MISSION_NAME"]
+    DATES: tuple[str, str] = (
+        config["SUBSET"]["TIME"]["START_DATE"],
+        config["SUBSET"]["TIME"]["END_DATE"],
+    )
+    EXTENT: dict = config["SUBSET"]["EXTENT"]
+    DEPTH: int = config["SUBSET"]["MAX_DEPTH"]
 
-    MODEL_SELECTION = config["MODELS"]
-    PATHFINDING = config["PATHFINDING"]
+    MODEL_SELECTION: dict = config["MODELS"]
+    IS_PATHFINDING: bool = config["PATHFINDING"]["ENABLE"]
+    ALGORITHM: str = config["PATHFINDING"]["ALGORITHM"]
+    HEURISTIC: str = config["PATHFINDING"]["HEURISTIC"]
+    WAYPOINTS: list[list] = config["PATHFINDING"]["WAYPOINTS"]
+    GLIDER_RAW_SPEED: float = config["PATHFINDING"]["GLIDER_RAW_SPEED"]
 
-    INDIVIDUAL_PLOTS = config["PLOTTING"]["INDIVIDUAL_PLOTS"]
-    COMPARISON_PLOTS = config["PLOTTING"]["COMPARISON_PLOTS"]
+    INDIVIDUAL_PLOTS: bool = config["PLOTTING"]["INDIVIDUAL_PLOTS"]
+    COMPARISON_PLOTS: dict = config["PLOTTING"]["COMPARISON_PLOTS"]
 
-    MAGNITUDE_PLOTS = config["PLOTTING"]["PLOT_MAGNITUDES"]
-    THRESHOLD_PLOTS = config["PLOTTING"]["PLOT_MAGNITUDE_THRESHOLDS"]
-    VECTORS = config["PLOTTING"]["VECTORS"]
-    SAVE_FIGURES = config["PLOTTING"]["SAVE_FIGURES"]
-
-    PLOT_OPTIMAL_PATH = config["PLOTTING"]["PLOT_OPTIMAL_PATH"]
+    MAGNITUDE_PLOTS: bool = config["PLOTTING"]["PLOT_MAGNITUDES"]
+    THRESHOLD_PLOTS: bool = config["PLOTTING"]["PLOT_MAGNITUDE_THRESHOLDS"]
+    PLOT_OPTIMAL_PATH: bool = config["PLOTTING"]["PLOT_OPTIMAL_PATH"]
+    VECTORS: dict = config["PLOTTING"]["VECTORS"]
+    SAVE_FIGURES: bool = config["PLOTTING"]["SAVE_FIGURES"]
 
     # logo text
     logo_text()
 
     # initialize models
-    cmems = CMEMS()
-    espc = ESPC()
-    rtofs_e = RTOFS("east")
-    rtofs_w = RTOFS("west")
-    rtofs_p = RTOFS("parallel")
+    cmems: object = CMEMS()
+    espc: object = ESPC()
+    rtofs_e: object = RTOFS("east")
+    rtofs_w: object = RTOFS("west")
+    rtofs_p: object = RTOFS("parallel")
 
     # secondary parameter initialization
     if DATES[1] is None:
@@ -92,6 +98,7 @@ def main(config_name: str) -> None:
     }
     model_list = [model for model, selected in model_selection_dict.items() if selected]
 
+    waypoints = [(coord[0], coord[1]) for coord in WAYPOINTS]
     optimal_paths = {}
 
     comparison_selection_dict = {
@@ -111,18 +118,23 @@ def main(config_name: str) -> None:
     contour_type = [cntr for cntr, selected in contour_select_dict.items() if selected]
 
     parameters = {
-        "Mission Name": MISSION_NAME,
-        "Start Date": DATES[0],
-        "End Date": DATES[1],
-        "Extent": extent,
-        "Depth": DEPTH,
-        "Models": model_list,
-        "pathfinding": PATHFINDING,
-        "individual_plots": contour_type,
+        "mission_name": MISSION_NAME,
+        "start_date": DATES[0],
+        "end_date": DATES[1],
+        "extent": extent,
+        "depth": DEPTH,
+        "models": model_list,
+        "pathfinding": IS_PATHFINDING,
+        "algorithm": ALGORITHM,
+        "heuristic": HEURISTIC,
+        "waypoints": waypoints,
+        "glider_raw_speed": GLIDER_RAW_SPEED,
+        "indv_plots": INDIVIDUAL_PLOTS,
+        "contours": contour_type,
         "vectors": VECTORS,
-        "comparison_plots": comparison_list,
-        "plot_optimal_path": PLOT_OPTIMAL_PATH,
-        "save_figures": SAVE_FIGURES,
+        "comp_plots": comparison_list,
+        "plot_opt_path": PLOT_OPTIMAL_PATH,
+        "save_figs": SAVE_FIGURES,
     }
 
     # read back ticket dict

@@ -90,13 +90,43 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
 
 
 def ticket_report(params: dict) -> None:
-    params_formatted = params.copy()
-    params_formatted["Models"] = [model.name for model in params_formatted["Models"]]
+    contour_dict = {"magnitude": "Magnitude", "threshold": "Magnitude Threshold"}
+    vector_dict = {"quiver": "Quiver", "streamplot": "Streamplot"}
+    comp_dict = {
+        "simple_diff": "Simple Difference",
+        "mean_diff": "Mean Difference",
+        "simple_mean": "Simple Mean",
+        "rmsd": "RMS Profile Difference",
+    }
+    ticket = {
+        "Mission Name": params["mission_name"],
+        "Start Date": params["start_date"],
+        "End Date": params["end_date"],
+        "Southwest Point": f"({params['extent'][0]}°, {params['extent'][1]}°)",
+        "Northeast Point": f"({params['extent'][2]}°, {params['extent'][3]}°)",
+        "Depth": params["depth"],
+        "Models": ", ".join([model.name for model in params["models"]]),
+        "Pathfinding": params["pathfinding"],
+        "Algorithm": params["algorithm"],
+        "Heuristic": params["heuristic"],
+        "Waypoints": ",\n\t   ".join([f"({y}°, {x}°)" for x, y in params["waypoints"]]),
+        "Glider Raw Speed": f"{params["glider_raw_speed"]} m/s",
+        "Individual Plots": params["indv_plots"],
+        "Contours": ", ".join(contour_dict[plot] for plot in params["contours"]),
+        "Vectors": vector_dict[params["vectors"]["TYPE"]],
+        "Streamline Density": params["vectors"]["STREAMLINE_DENSITY"],
+        "Quiver Downscaling Value": params["vectors"]["QUIVER_DOWNSCALING"],
+        "Comparison Plots": ", ".join(
+            [comp_dict[plot] for plot in params["comp_plots"]]
+        ),
+        "Plot Optimal Path": params["plot_opt_path"],
+        "Save Figures": params["save_figs"],
+    }
 
     print(
         "----------------------------\nTicket Information:\n----------------------------"
     )
-    for key, value in params_formatted.items():
+    for key, value in ticket.items():
         print(f"{key}: {value}")
     print("----------------------------\n")
 

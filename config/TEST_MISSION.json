@@ -17,7 +17,6 @@
     },
 
     "MODELS": {
-
         "CMEMS": true,
         "ESPC": true,
         "RTOFS_EAST": true,
