@@ -20,7 +20,8 @@ class CMEMS:
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
         - da_data (xr.Dataset): Depth averaged data.
-        - xy_interpolated_data (xr.Dataset): Interpolated data to common grid.
+        - optimal_path (list[tuple[float, float]]): Optimal path.
+        - waypoints (list[tuple[float, float]]): Waypoints.
     """
 
     def __init__(self) -> None:
@@ -30,7 +31,8 @@ class CMEMS:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
-        self.xy_interpolated_data: xr.Dataset = None
+        self.optimal_path: list[tuple[float, float]] = None
+        self.waypoints: list[tuple[float, float]] = None
 
     def load(
         self,
@@ -128,7 +130,8 @@ class ESPC:
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
         - da_data (xr.Dataset): Depth averaged data.
-        - xy_interpolated_data (xr.Dataset): Interpolated data to common grid.
+        - optimal_path (list[tuple[float, float]]): Optimal path.
+        - waypoints (list[tuple[float, float]]): Waypoints.
     """
 
     def __init__(self) -> None:
@@ -138,7 +141,8 @@ class ESPC:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
-        self.xy_interpolated_data: xr.Dataset = None
+        self.optimal_path: list[tuple[float, float]] = None
+        self.waypoints: list[tuple[float, float]] = None
 
     def load(self, diag_text: bool = True) -> None:
         """Loads Eastward and Northward current velocities from the ESPC model. Saves data to self.raw_data attribute."""
@@ -226,7 +230,8 @@ class RTOFS:
         - subset_data (xr.Dataset): Subset of raw data.
         - z_interpolated_data (xr.Dataset): Interpolated data to 1 meter depth intervals.
         - da_data (xr.Dataset): Depth averaged data.
-        - xy_interpolated_data (xr.Dataset): Interpolated data to common grid.
+        - optimal_path (list[tuple[float, float]]): Optimal path.
+        - waypoints (list[tuple[float, float]]): Waypoints.
     """
 
     def __init__(self, source: str) -> None:
@@ -242,7 +247,8 @@ class RTOFS:
         self.subset_data: xr.Dataset = None
         self.z_interpolated_data: xr.Dataset = None
         self.da_data: xr.Dataset = None
-        self.xy_interpolated_data: xr.Dataset = None
+        self.optimal_path: list[tuple[float, float]] = None
+        self.waypoints: list[tuple[float, float]] = None
 
     def load(self) -> None:
         """Loads Eastward and Northward current velocities from the RTOFS model. Saves data to self.raw_data attribute."""

@@ -1,4 +1,5 @@
 # author: matthew learn (matt.learn@marine.rutgers.edu)
+# This script contains general helper functions and individual model processing functions.
 
 import datetime as dt
 from datetime import datetime
@@ -10,7 +11,13 @@ import xarray as xr
 import xesmf as xe
 
 
-# Helper functions
+"""
+SECTION 1: General Helper Functions
+
+This section contains general helper functions for the script.
+"""
+
+
 def logo_text() -> None:
     """Prints the GGS2 logo text."""
     print(
@@ -90,13 +97,14 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
 
 
 def ticket_report(params: dict) -> None:
+    """Prints the ticket report for the selected parameters."""
     contour_dict = {"magnitude": "Magnitude", "threshold": "Magnitude Threshold"}
     vector_dict = {"quiver": "Quiver", "streamplot": "Streamplot"}
     comp_dict = {
         "simple_diff": "Simple Difference",
         "mean_diff": "Mean Difference",
         "simple_mean": "Simple Mean",
-        "rmsd": "RMS Profile Difference",
+        "rmsd_profile": "RMS Profile Difference",
     }
     ticket = {
         "Mission Name": params["mission_name"],
@@ -128,20 +136,18 @@ def ticket_report(params: dict) -> None:
     )
     for key, value in ticket.items():
         print(f"{key}: {value}")
-    print("----------------------------\n")
 
 
-def model_raw_report(model: object) -> None:
-    text_name = model.raw_data.attrs["text_name"]
-    model_name = model.raw_data.attrs["model_name"]
+def model_raw_report(model_list: list[object]) -> None:
+    """Prints the raw report for the selected models."""
+    min_date_list = [model.raw_data.time.min().values for model in model_list]
+    max_date_list = [model.raw_data.time.max().values for model in model_list]
     print(
         "----------------------------\nModel Raw Report:\n----------------------------"
     )
-    print(f"Model: {text_name}")
-    print(f"Minimum date: {model.time.min().strftime('%Y-%m-%d')}")
-    print(f"Maximum date: {model.time.max().strftime('%Y-%m-%d')}")
-    # might not need any more data than this tbh
-    print("----------------------------\n")
+    # prints the range of valid dates that can be used.
+    print(f"Minimum date: {max(min_date_list).astype(str).split('T')[0]}")
+    print(f"Maximum date: {min(max_date_list).astype(str).split('T')[0]}")
 
 
 def optimal_workers(power: float = 1.0) -> int:
@@ -171,6 +177,14 @@ def optimal_workers(power: float = 1.0) -> int:
     print(f"Number of workers: {num_workers}")
 
     return num_workers
+
+
+"""
+SECTION 2: Individual Model Processing Functions
+
+This section contains individual model processing functions. These functions regrid the model data to a common grid, 
+interpolate depth, calculate magnitude, and depth average.
+"""
 
 
 def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Dataset:
@@ -337,174 +351,3 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
         print()
 
     return data
-
-
-# Comparison functions
-def calculate_simple_diff(model1: object, model2: object) -> xr.Dataset:
-    """
-    Calculates the simple difference between two datasets. Returns a single xr.Dataset of the simple difference.
-
-    Args:
-    ----------
-        - model1 (object): The first model.
-        - model2 (object): The second model.
-
-    Returns:
-    ----------
-        - simple_diff (xr.Dataset): The simple difference between the two datasets.
-    """
-    data1 = model1.da_data
-    data2 = model2.da_data
-    model_list = [data1, data2]
-    model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
-    data1 = model_list[0]
-    data2 = model_list[1]
-
-    text_name1: str = data1.attrs["text_name"]
-    text_name2: str = data2.attrs["text_name"]
-    model_name1: str = data1.attrs["model_name"]
-    model_name2: str = data2.attrs["model_name"]
-    text_name = " & ".join([text_name1, text_name2])
-    model_name = "+".join([model_name1, model_name2])
-
-    print(f"{text_name}: Calculating Simple Difference...")
-    starttime = print_starttime()
-
-    simple_diff = data1 - data2
-    simple_diff.attrs["model_name"] = f"{model_name}_simple_diff"
-    simple_diff.attrs["text_name"] = f"Simple Difference [{text_name}]"
-    simple_diff.attrs["model1_name"] = data1.attrs["text_name"]
-    simple_diff.attrs["model2_name"] = data2.attrs["text_name"]
-
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return simple_diff
-
-
-def calculate_rmsd(model1: object, model2: object, regrid: bool = False) -> xr.Dataset:
-    """
-    Calculates the root mean squared difference between two datasets.
-
-    Args:
-    ----------
-        - model1 (object): The first model.
-        - model2 (object): The second model.
-        - regrid (bool, optional): Whether to regrid datasets. Defaults to `False`.
-
-    Returns:
-    ----------
-        - rmsd (xr.Dataset): The root mean squared difference between the two datasets.
-    """
-    data1 = model1.z_interpolated_data
-    data2 = model2.z_interpolated_data
-    model_list = [data1, data2]
-    model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
-    data1 = model_list[0]
-    data2 = model_list[1]
-
-    text_name1: str = data1.attrs["text_name"]
-    text_name2: str = data2.attrs["text_name"]
-    model_name1: str = data1.attrs["model_name"]
-    model_name2: str = data2.attrs["model_name"]
-    text_name = " & ".join([text_name1, text_name2])
-    model_name = "+".join([model_name1, model_name2])
-
-    print(f"{text_name}: Calculating RMSD...")
-    starttime = print_starttime()
-
-    if regrid:
-        data2 = regrid_ds(data2, data1, diag_text=False)  # regrid model2 to model1.
-
-    # Calculate RMSD
-    delta_u = data1.u - data2.u
-    delta_v = data1.v - data2.v
-
-    rmsd_u = np.sqrt(np.square(delta_u).mean(dim="depth"))
-    rmsd_v = np.sqrt(np.square(delta_v).mean(dim="depth"))
-    rmsd_mag = np.sqrt(rmsd_u**2 + rmsd_v**2)
-
-    rmsd = xr.Dataset(
-        {"u": rmsd_u, "v": rmsd_v, "magnitude": rmsd_mag},
-        attrs={"text_name": text_name, "model_name": model_name},
-    )
-
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return rmsd
-
-
-def calculate_simple_mean(model_list: list[object]) -> xr.Dataset:
-    """
-    Calculates the simple mean of a list of datasets. Returns a single xr.Dataset of the simple means.
-
-    Args:
-    ----------
-        - model_list (list[object]): A list of xr.Datasets.
-
-    Returns:
-    ----------
-        - simple_mean (xr.Dataset): The simple mean of the list of datasets.
-    """
-    print("Calculating simple mean of selected models...")
-    starttime = print_starttime()
-
-    datasets = [model.da_data for model in model_list]
-    model_names = "_".join([dataset.attrs["model_name"] for dataset in datasets])
-    text_names = ", ".join([dataset.attrs["text_name"] for dataset in datasets])
-
-    combined_dataset = xr.concat(datasets, dim="datasets")
-    simple_mean = combined_dataset.mean(dim="datasets")
-    simple_mean.attrs["model_name"] = f"{model_names}_simple_mean"
-    simple_mean.attrs["text_name"] = f"Simple Mean [{text_names}]"
-
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return simple_mean
-
-
-def calculate_mean_diff(model_list: list[object]) -> xr.Dataset:
-    """
-    Calculates the mean of the differences of each non-repeating pair of models from the passed list of datasets.
-    Returns a single xr.Dataset of the mean differences.
-
-    Args:
-    ----------
-        - model_list (list[object]): A list of xr.Datasets.
-
-    Returns:
-    ----------
-        - mean_diff (xr.Dataset): The mean difference of all selected models.
-    """
-    print("Calculating mean difference of selected models...")
-    starttime = print_starttime()
-
-    datasets = [model.da_data for model in model_list]
-    model_names = "_".join([dataset.attrs["model_name"] for dataset in datasets])
-    text_names = ", ".join([dataset.attrs["text_name"] for dataset in datasets])
-
-    ds_combos = list(itertools.combinations(datasets, r=2))
-
-    diff_list = []
-    for ds1, ds2 in ds_combos:
-        diff_list.append(abs(ds1 - ds2))
-
-    combined_ds = xr.concat(diff_list, dim="datasets", coords="minimal")
-    mean_diff = combined_ds.mean(dim="datasets")
-    mean_diff.attrs["model_name"] = f"{model_names}_meandiff"
-    mean_diff.attrs["text_name"] = f"Mean Difference [{text_names}]"
-
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return mean_diff

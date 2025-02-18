@@ -556,8 +556,8 @@ def populate_map(
             colors=colors,
         )
 
-    elif contour_type == "rmsd":
-        plot_title = "Depth Averaged Root Mean Square Differences (RMSD)"
+    elif contour_type == "rmsd_profile":
+        plot_title = "Depth Averaged Root Mean Square Differences (RMSD Profile)"
         label = r"RMSD ($\mathregular{ms^{-1}}$)"
         levels = np.linspace(0, 0.9, 10)
 
@@ -590,7 +590,14 @@ def populate_map(
         ax_pos = ax.get_position()
         top = ax_pos.y1
         eq_position = top + 0.05
-        fig.text(0.5, eq_position, f"Difference = {data.attrs['model1_name']} - {data.attrs['model2_name']}", fontsize=15, ha="center", va="center")
+        fig.text(
+            0.5,
+            eq_position,
+            f"Difference = {data.attrs['model1_name']} - {data.attrs['model2_name']}",
+            fontsize=15,
+            ha="center",
+            va="center",
+        )
 
     elif contour_type == "threshold":
         plot_title = "Depth Averaged Current Thresholds"
@@ -657,7 +664,14 @@ def create_map(
     ----------
     - data (Dataset): Data to be plotted.
     - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-    - contour_type (str): Type of contour (e.g., 'magnitude', mean_diff', 'threshold', 'rmsd').
+    - contour_type (str): Type of contour. Options are:
+        - 'magnitude',
+        - 'threshold',
+        - 'simple_diff',
+        - 'mean_diff',
+        - 'mean_magnitude',
+        - 'mean_threshold',
+        - 'rmsd_profile'
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
     - density (int): Density of streamlines. Defaults to 5.
     - scalar (int): Scalar for subsampling data. Defaults to 4.
@@ -691,10 +705,18 @@ def create_map(
     elif vector_type == None:
         vector_text = "vectorless"
 
-    if contour_type == "rmsd":
-        contour_text = "RMSD"
+    if contour_type == "threshold":
+        contour_text = "magnitude threshold"
+    elif contour_type == "rmsd_profile":
+        contour_text = "RMS Difference"
     elif contour_type == "mean_diff":
         contour_text = "mean difference"
+    elif contour_type == "mean_magnitude":
+        contour_text = "simple mean magnitude"
+    elif contour_type == "mean_threshold":
+        contour_text = "simple mean magnitude threshold"
+    elif contour_type == "simple_diff":
+        contour_text = "simple difference"
     else:
         contour_text = contour_type
 

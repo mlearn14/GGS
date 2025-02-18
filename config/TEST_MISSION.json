@@ -4,13 +4,13 @@
     "SUBSET": {
 
         "TIME": {
-            "START_DATE": "2025-02-15T00:00:00Z",
+            "START_DATE": null,
             "END_DATE": null
         },
 
         "EXTENT": {
-            "SW_POINT": [34, -74],
-            "NE_POINT": [45, -50]
+            "SW_POINT": [36, -74],
+            "NE_POINT": [45, -62]
         },
 
         "MAX_DEPTH": 1000
@@ -25,7 +25,7 @@
     },
 
     "PATHFINDING": {
-        "ENABLE": true,
+        "ENABLE": false,
         "ALGORITHM": "A*",
         "HEURISTIC": null,
         "WAYPOINTS": [
@@ -41,19 +41,19 @@
 
     "PLOTTING": {
 
-        "INDIVIDUAL_PLOTS": true,
+        "INDIVIDUAL_PLOTS": false,
 
         "COMPARISON_PLOTS": {
             "SIMPLE_DIFFERENCE": true,
-            "MEAN_DIFFERENCE": false,
-            "SIMPLE_MEAN": false,
-            "RMS_PROFILE_DIFFERENCE": false
+            "MEAN_DIFFERENCE": true,
+            "SIMPLE_MEAN": true,
+            "RMS_PROFILE_DIFFERENCE": true
         },
 
         "PLOT_MAGNITUDES": true,
         "PLOT_MAGNITUDE_THRESHOLDS": true,
 
-        "PLOT_OPTIMAL_PATH": false,
+        "PLOT_OPTIMAL_PATH": true,
 
         "VECTORS": {
             "TYPE": "streamplot",
