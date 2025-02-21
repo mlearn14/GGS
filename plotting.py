@@ -12,22 +12,28 @@ from functions import *
 
 
 ### Saving functions ###
-def generate_filename(
-    date: str,
+def generate_fig_filename(
+    mission_name: str,
+    ddate: str,
+    fdate: str,
     plot_type: str,
     vector_type: str,
     model_name: str,
-    output_dir: str = "figures",
+    comp_plot: bool = False,
+    output_dir: str = "products",
 ) -> str:
     """
     Generate a standardized filename for saving figures.
 
     Args:
     ----------
-        - date (str): The date in YYYYMMDD format.
+        - mission_name (str): The name of the mission.
+        - ddate (str): The directory date in YYYY_MM_DD format.
+        - fdate (str): The file date in YYYYMMDDHH format.
         - figure_type (str): Type of figure (e.g., 'magnitude', 'threshold', 'rmsd').
         - plot_type (str): Type of plot (e.g., 'streamplot', 'quiverplot', 'none').
         - model_names (list): Model names(s) (e.g., 'RTOFS', 'CMEMS', 'RTOFS+CMEMS').
+        - comp_plot (bool, optional): Whether this is a comparison plot. Default is False.
         - output_dir (str, optional): Directory where the file will be saved. Default is 'figures'.
 
     Returns:
@@ -35,11 +41,14 @@ def generate_filename(
         - filename (str): Full path for the output file.
     """
     # Ensure the output directory exists
-    output_dir = f"{output_dir}/{date}/{plot_type}"
+    if comp_plot:
+        output_dir = f"{output_dir}/{ddate}/comparisons"
+    else:
+        output_dir = f"{output_dir}/{ddate}"
     os.makedirs(output_dir, exist_ok=True)
 
     # Construct the file name
-    filename = f"{date}_{model_name}_{plot_type}_{vector_type}.png"
+    filename = f"{mission_name}_{fdate}_{model_name}_{plot_type}_{vector_type}.png"
 
     # Combine directory and file name
     return os.path.join(output_dir, filename)
@@ -331,7 +340,7 @@ def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
         markersize=4,
         transform=ccrs.PlateCarree(),
     )
-    
+
     start_point = ax.scatter(
         wp_lons[0],
         wp_lats[0],
@@ -674,6 +683,8 @@ def create_map(
     optimized_path: list = None,
     waypoints: list = None,
     initialize: bool = True,
+    mission_name: str = None,
+    comp_plot: bool = False,
     save: bool = False,
     **kwargs,
 ) -> tuple:
@@ -698,6 +709,8 @@ def create_map(
     - optimized_path (list): List of optimized glider paths (e.g., [path1, path2, ...]).
     - waypoints (list): List of waypoints (e.g., [waypoint1, waypoint2, ...]).
     - initialize (bool): Determines if a new figure will be initialized. Defaults to False.
+    - mission_name (str): Name of the mission.
+    - comp_plot (bool): Determines if a comparison plot will be created. Defaults to False.
     - save (bool): Determines if the figure will be saved to a file. Defaults to False. If set to True, figures will be saved to the /figures directory.
 
     Returns:
@@ -767,8 +780,11 @@ def create_map(
 
     if save:
         model_name = data.attrs["model_name"]
+        ddate = data.time.dt.strftime("%Y_%m_%d").values
         fdate = data.time.dt.strftime("%Y%m%d%H").values
-        filename = generate_filename(fdate, contour_type, vector_type, model_name)
+        filename = generate_fig_filename(
+            mission_name, ddate, fdate, contour_type, vector_type, model_name, comp_plot
+        )
         save_fig(fig, filename, fdate)
 
     print("Done.")

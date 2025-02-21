@@ -1,6 +1,7 @@
 # local ignores
 data/*
 figures/*
+products/*
 test
 streamlit_test.py
 streamlit_function.py

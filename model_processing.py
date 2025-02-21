@@ -60,6 +60,7 @@ def process_individual_model(
     depth: int,
     single_date: bool,
     pathfinding: dict,
+    mission_name: str = None,
 ) -> None:
     """
     Processes individual model data. Assigns regridded subset data,
@@ -92,11 +93,15 @@ def process_individual_model(
     if pathfinding["ENABLE"]:
         model.waypoints = pathfinding["WAYPOINTS"]
         model.optimal_path = compute_a_star_path(
-            pathfinding["WAYPOINTS"], model, pathfinding["GLIDER_RAW_SPEED"]
+            pathfinding["WAYPOINTS"],
+            model,
+            pathfinding["GLIDER_RAW_SPEED"],
+            mission_name,
         )
     else:
         model.waypoints = None
         model.optimal_path = None
+
 
 def calculate_simple_diff(model1: object, model2: object) -> xr.Dataset:
     """

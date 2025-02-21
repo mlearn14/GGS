@@ -10,7 +10,10 @@ from functions import *
 
 
 def compute_a_star_path(
-    waypoints_list: list[tuple], model: object, glider_raw_speed: float = 0.5
+    waypoints_list: list[tuple],
+    model: object,
+    glider_raw_speed: float = 0.5,
+    mission_name: str = None,
 ) -> list:
     """
     Calculates the optimal path between waypoints for a mission, considering the impact of ocean currents and distance.
@@ -386,15 +389,12 @@ def compute_a_star_path(
         return path, time, distance
 
     ### MAIN FUNCTION CODE ###
+
     # Define variables
     ds = model.da_data
     ds = ds.load()  # load the data. if chunked, the algorithm will run incredibly slow!
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
-
-    # Ensure data/mission_statistics directory exists
-    dir = "data/mission_statistics"
-    os.makedirs(dir, exist_ok=True)
 
     # Initialize a list to store the CSV data
     csv_data = [
@@ -455,9 +455,15 @@ def compute_a_star_path(
     print(f"Total mission time (adjusted): {total_time} seconds")
     print(f"Total mission distance: {total_distance} meters")
 
+    # Ensure output directory exists
+    dir = f"products/{ds.time.dt.strftime('%Y_%m_%d').values}/data"
+    os.makedirs(dir, exist_ok=True)
+
     # Define the path for the CSV file
-    # TODO: add date directory!!
-    csv_file_path = os.path.join(dir, f"{model_name}_mission_statistics.csv")
+    csv_file_path = os.path.join(
+        dir,
+        f"{mission_name}_{ds.time.dt.strftime('%Y%m%d%H').values}_{model_name}_mission_statistics.csv",
+    )
     # Open the CSV file and write the data to it
     with open(csv_file_path, "w", newline="") as file:
         writer = csv.writer(file)

@@ -4,13 +4,13 @@
     "SUBSET": {
 
         "TIME": {
-            "START_DATE": null,
+            "START_DATE": "TOMORROW",
             "END_DATE": null
         },
 
         "EXTENT": {
-            "SW_POINT": [36, -74],
-            "NE_POINT": [45, -62]
+            "SW_POINT": [34, -74],
+            "NE_POINT": [45, -50]
         },
 
         "MAX_DEPTH": 1000
@@ -25,7 +25,7 @@
     },
 
     "PATHFINDING": {
-        "ENABLE": false,
+        "ENABLE": true,
         "ALGORITHM": "A*",
         "HEURISTIC": null,
         "WAYPOINTS": [
@@ -41,7 +41,7 @@
 
     "PLOTTING": {
 
-        "INDIVIDUAL_PLOTS": false,
+        "INDIVIDUAL_PLOTS": true,
 
         "COMPARISON_PLOTS": {
             "SIMPLE_DIFFERENCE": true,
