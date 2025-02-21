@@ -17,11 +17,11 @@
     },
 
     "MODELS": {
-        "CMEMS": true,
-        "ESPC": true,
+        "CMEMS": false,
+        "ESPC": false,
         "RTOFS_EAST": true,
         "RTOFS_WEST": false,
-        "RTOFS_PARALLEL": true
+        "RTOFS_PARALLEL": false
     },
 
     "PATHFINDING": {

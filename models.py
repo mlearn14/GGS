@@ -6,8 +6,6 @@ import copernicusmarine as cm
 
 from functions import *
 
-# TODO: for dubugging, check if dates given are within the datasets!
-
 
 class CMEMS:
     """

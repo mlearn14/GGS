@@ -9,7 +9,14 @@ import itertools
 import json
 
 
-def main(config_name: str) -> None:
+def main() -> None:
+    s_starttime = print_starttime()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_name", type=str)
+    args = parser.parse_args()
+    config_name = args.config_name
+
     try:
         with open(f"config/{config_name}.json", "r") as f:
             config = json.load(f)
@@ -113,7 +120,6 @@ def main(config_name: str) -> None:
     comparison_list = [
         comp for comp, selected in comparison_selection_dict.items() if selected
     ]
-    print(f"Comparison Plots: {comparison_list}")
 
     # initialize non repleating model combinations list
     model_combos = list(itertools.combinations(model_list, r=2))
@@ -246,15 +252,11 @@ def main(config_name: str) -> None:
                         save=SAVE_FIGURES,
                     )
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("config_name", type=str)
-    args = parser.parse_args()
-
-    s_starttime = print_starttime()
-    main(args.config_name)
     s_endtime = print_endtime()
     print("Script complete.")
     print_runtime(s_starttime, s_endtime)
     print("Thank you for using Glider Guidance System 2.")
+
+
+if __name__ == "__main__":
+    main()

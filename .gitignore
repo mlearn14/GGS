@@ -1,5 +1,5 @@
 # local ignores
-data/*
+config/*
 figures/*
 products/*
 test
