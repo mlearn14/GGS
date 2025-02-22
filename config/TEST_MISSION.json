@@ -20,7 +20,7 @@
         "CMEMS": false,
         "ESPC": false,
         "RTOFS_EAST": true,
-        "RTOFS_WEST": false,
+        "RTOFS_WEST": true,
         "RTOFS_PARALLEL": false
     },
 
