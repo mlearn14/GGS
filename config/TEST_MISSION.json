@@ -20,8 +20,8 @@
         "CMEMS": false,
         "ESPC": false,
         "RTOFS_EAST": true,
-        "RTOFS_WEST": true,
-        "RTOFS_PARALLEL": false
+        "RTOFS_WEST": false,
+        "RTOFS_PARALLEL": true
     },
 
     "PATHFINDING": {
