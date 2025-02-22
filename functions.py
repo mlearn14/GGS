@@ -1,7 +1,9 @@
 # author: matthew learn (matt.learn@marine.rutgers.edu)
+# This script contains general helper functions and individual model processing functions.
 
 import datetime as dt
 from datetime import datetime
+import itertools
 import math
 import numpy as np
 import os
@@ -9,7 +11,38 @@ import xarray as xr
 import xesmf as xe
 
 
-# Helper functions
+"""
+SECTION 1: General Helper Functions
+
+This section contains general helper functions for the script.
+"""
+
+
+def logo_text() -> None:
+    """Prints the GGS2 logo text."""
+    print(
+        rf"""
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
+ ~~~~~/\\\\\\\\\\\\~~~~~~/\\\\\\\\\\\\~~~~~~/\\\\\\\\\\\~~~~~~~/\\\\\\\\\~~~~~         
+  ~~~/\\\//////////~~~~~/\\\//////////~~~~~/\\\/////////\\\~~~/\\\///////\\\~~~        
+   ~~/\\\~~~~~~~~~~~~~~~/\\\~~~~~~~~~~~~~~~\//\\\~~~~~~\///~~~\///~~~~~~\//\\\~~       
+    ~\/\\\~~~~/\\\\\\\~~\/\\\~~~~/\\\\\\\~~~~\////\\\~~~~~~~~~~~~~~~~~~~~/\\\/~~~      
+     ~\/\\\~~~\/////\\\~~\/\\\~~~\/////\\\~~~~~~~\////\\\~~~~~~~~~~~~~~/\\\//~~~~~     
+      ~\/\\\~~~~~~~\/\\\~~\/\\\~~~~~~~\/\\\~~~~~~~~~~\////\\\~~~~~~~~/\\\//~~~~~~~~    
+       ~\/\\\~~~~~~~\/\\\~~\/\\\~~~~~~~\/\\\~~~/\\\~~~~~~\//\\\~~~~~/\\\/~~~~~~~~~~~   
+        ~\//\\\\\\\\\\\\/~~~\//\\\\\\\\\\\\/~~~\///\\\\\\\\\\\/~~~~~/\\\\\\\\\\\\\\\~  
+         ~~\////////////~~~~~~\////////////~~~~~~~\///////////~~~~~~\///////////////~~ 
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+                                    Glider Guidance System 2
+                                          Version 1.1.0
+                                    Created by Matthew Learn
+
+                      Need help? Send an email to matt.learn@marine.rutgers.edu
+        """
+    )
+
+
 def print_starttime() -> datetime:
     """
     Prints the start time of the script.
@@ -63,6 +96,60 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
     print(f"Runtime: {runtime}")
 
 
+def ticket_report(params: dict) -> None:
+    """Prints the ticket report for the selected parameters."""
+    contour_dict = {"magnitude": "Magnitude", "threshold": "Magnitude Threshold"}
+    vector_dict = {"quiver": "Quiver", "streamplot": "Streamplot"}
+    comp_dict = {
+        "simple_diff": "Simple Difference",
+        "mean_diff": "Mean Difference",
+        "simple_mean": "Simple Mean",
+        "rmsd_profile": "RMS Profile Difference",
+    }
+    ticket = {
+        "Mission Name": params["mission_name"],
+        "Start Date": params["start_date"],
+        "End Date": params["end_date"],
+        "Southwest Point": f"({params['extent'][0]}°, {params['extent'][1]}°)",
+        "Northeast Point": f"({params['extent'][2]}°, {params['extent'][3]}°)",
+        "Depth": params["depth"],
+        "Models": ", ".join([model.name for model in params["models"]]),
+        "Pathfinding": params["pathfinding"],
+        "Algorithm": params["algorithm"],
+        "Heuristic": params["heuristic"],
+        "Waypoints": ",\n\t   ".join([f"({y}°, {x}°)" for x, y in params["waypoints"]]),
+        "Glider Raw Speed": f"{params["glider_raw_speed"]} m/s",
+        "Individual Plots": params["indv_plots"],
+        "Contours": ", ".join(contour_dict[plot] for plot in params["contours"]),
+        "Vectors": vector_dict[params["vectors"]["TYPE"]],
+        "Streamline Density": params["vectors"]["STREAMLINE_DENSITY"],
+        "Quiver Downscaling Value": params["vectors"]["QUIVER_DOWNSCALING"],
+        "Comparison Plots": ", ".join(
+            [comp_dict[plot] for plot in params["comp_plots"]]
+        ),
+        "Plot Optimal Path": params["plot_opt_path"],
+        "Save Figures": params["save_figs"],
+    }
+
+    print(
+        "----------------------------\nTicket Information:\n----------------------------"
+    )
+    for key, value in ticket.items():
+        print(f"{key}: {value}")
+
+
+def model_raw_report(model_list: list[object]) -> None:
+    """Prints the raw report for the selected models."""
+    min_date_list = [model.raw_data.time.min().values for model in model_list]
+    max_date_list = [model.raw_data.time.max().values for model in model_list]
+    print(
+        "----------------------------\nModel Raw Report:\n----------------------------"
+    )
+    # prints the range of valid dates that can be used.
+    print(f"Minimum date: {max(min_date_list).astype(str).split('T')[0]}")
+    print(f"Maximum date: {min(max_date_list).astype(str).split('T')[0]}")
+
+
 def optimal_workers(power: float = 1.0) -> int:
     """
     Calculate the optimal number of workers for parallel processing based on the available CPU cores and a power factor.
@@ -92,56 +179,12 @@ def optimal_workers(power: float = 1.0) -> int:
     return num_workers
 
 
-def generate_filename(
-    date: str,
-    plot_type: str,
-    vector_type: str,
-    model_name: str,
-    output_dir: str = "figures",
-) -> str:
-    """
-    Generate a standardized filename for saving figures.
+"""
+SECTION 2: Individual Model Processing Functions
 
-    Args:
-    ----------
-        - date (str): The date in YYYYMMDD format.
-        - figure_type (str): Type of figure (e.g., 'magnitude', 'threshold', 'rmsd').
-        - plot_type (str): Type of plot (e.g., 'streamplot', 'quiverplot', 'none').
-        - model_names (list): Model names(s) (e.g., 'RTOFS', 'CMEMS', 'RTOFS+CMEMS').
-        - output_dir (str, optional): Directory where the file will be saved. Default is 'figures'.
-
-    Returns:
-    ----------
-        - filename (str): Full path for the output file.
-    """
-    # Ensure the output directory exists
-    output_dir = f"{output_dir}/{date}/{plot_type}"
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Construct the file name
-    filename = f"{date}_{model_name}_{plot_type}_{vector_type}.png"
-
-    # Combine directory and file name
-    return os.path.join(output_dir, filename)
-
-
-# debating moving this to plotting.py
-def save_fig(fig: object, filename: str, date: str) -> None:
-    """
-    Save a figure to a file.
-
-    Args:
-    ----------
-        - fig (object): The figure object to be saved.
-        - filename (str): The name of the file to save the figure to.
-
-    Returns:
-    ----------
-        - `None`
-    """
-    print(f"Saving figure to {filename}")
-    fig.savefig(filename, bbox_inches="tight", dpi=300)
-    print("Saved.")
+This section contains individual model processing functions. These functions regrid the model data to a common grid, 
+interpolate depth, calculate magnitude, and depth average.
+"""
 
 
 def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Dataset:
@@ -235,45 +278,6 @@ def interpolate_depth(
     return ds_interp
 
 
-def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
-    """
-    Calculates the magnitude of the model data.
-
-    Args:
-    ----------
-        - model (object): The model data.
-        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
-
-    Returns:
-    ----------
-        - ds (xr.Dataset): The model data with a new variable 'magnitude'.
-    """
-    ds = model.z_interpolated_data
-
-    text_name = ds.attrs["text_name"]
-    model_name = ds.attrs["model_name"]
-
-    if diag_text:
-        print(f"{text_name}: Calculating magnitude...")
-        starttime = print_starttime()
-
-    # Calculate magnitude (derived from Pythagoras)
-    magnitude = np.sqrt(ds["u"] ** 2 + ds["v"] ** 2)
-
-    magnitude.attrs["text_name"] = text_name
-    magnitude.attrs["model_name"] = model_name
-    ds = ds.assign(magnitude=magnitude)
-    ds = ds.chunk("auto")  # just to make sure
-
-    if diag_text:
-        print("Done.")
-        endtime = print_endtime()
-        print_runtime(starttime, endtime)
-        print()
-
-    return ds
-
-
 def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
     """
     Gets the depth integrated current velocities from the passed model data.
@@ -310,86 +314,40 @@ def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
     return ds_da
 
 
-def calculate_rmsd(data1, data2, regrid: bool = True) -> xr.DataArray:
+def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
     """
-    Calculates the root mean squared difference between two datasets.
+    Calculates the magnitude of the model data.
 
     Args:
     ----------
-        - data1 (xr.Dataset or xr.DataArray): The first dataset/array.
-        - data2 (xr.Dataset or xr.DataArray): The second dataset/array.
-        - regrid (bool, optional): Whether to regrid datasets. Defaults to True.
+        - model (object): The model data.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
     Returns:
     ----------
-        - rmsd (xr.DataArray): The root mean squared difference between the two datasets.
+        - data_mag (xr.Dataset): The model data with a new variable 'magnitude'.
     """
-    model_list = [data1, data2]
-    model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
-    data1 = model_list[0]
-    data2 = model_list[1]
+    data = model.da_data
 
-    text_name1: str = data1.attrs["text_name"]
-    text_name2: str = data2.attrs["text_name"]
-    model_name1: str = data1.attrs["model_name"]
-    model_name2: str = data2.attrs["model_name"]
-    text_name = " & ".join([text_name1, text_name2])
-    model_name = "+".join([model_name1, model_name2])
+    text_name = data.attrs["text_name"]
+    model_name = data.attrs["model_name"]
 
-    print(f"{text_name}: Calculating RMSD...")
-    starttime = print_starttime()
+    if diag_text:
+        print(f"{text_name}: Calculating magnitude...")
+        starttime = print_starttime()
 
-    if regrid:
-        data2 = regrid_ds(data2, data1, diag_text=False)  # regrid model2 to model1.
+    # Calculate magnitude (derived from Pythagoras)
+    magnitude = np.sqrt(data["u"] ** 2 + data["v"] ** 2)
 
-    # Calculate RMSD
-    diff = data1.magnitude - data2.magnitude
-    rmsd = np.sqrt(np.square(diff).mean(dim="depth"))
+    magnitude.attrs["text_name"] = text_name
+    magnitude.attrs["model_name"] = model_name
+    data = data.assign(magnitude=magnitude)
+    data = data.chunk("auto")  # just to make sure
 
-    rmsd.attrs["text_name"] = text_name
-    rmsd.attrs["model_name"] = model_name
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+        print()
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
-
-    return rmsd
-
-
-# Experimental Functions TODO: implement these
-def calculate_simple_mean(ds_list: list[xr.Dataset]) -> xr.Dataset:
-    """
-    Calculates the simple mean of a list of datasets. Returns a single xr.Dataset of the simple means.
-
-    Args:
-    ----------
-        - ds_list (list[xr.Dataset]): A list of xr.Datasets.
-
-    Returns:
-    ----------
-        - simple_mean (xr.Dataset): The simple mean of the list of datasets.
-    """
-    length = len(ds_list)
-    total = sum(ds_list)
-    simple_mean = total / length
-
-    return simple_mean
-
-
-def calculate_mean_difference(ds_list: list[xr.Dataset]) -> xr.Dataset:
-    """
-    Calculates the mean difference between a list of datasets. Returns a single xr.Dataset of the mean differences.
-
-    Args:
-    ----------
-        - ds_list (list[xr.Dataset]): A list of xr.Datasets.
-
-    Returns:
-    ----------
-        - mean_diff (xr.Dataset): The mean difference between the list of datasets.
-    """
-    length = len(ds_list)
-    total = sum(ds_list)
-
-    # TODO: find code that goes through every dataset combination. Is in a coding assignment!
+    return data

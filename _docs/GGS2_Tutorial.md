@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.0.2
+Last updated for v1.1.0
 
 ## Overview
 
@@ -10,21 +10,21 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
 
 1. Initialize parameters and models
 2. Initialize and load the common grid
-3. Individual model processing
-    - Load model from its respective API
-    - Subset model to desire parameters
-    - Interpolate data from the surface to desired maximum depth
-    - Calculate magnitude of currents from u and v components
-    - Calculate the depth average current velocity
+3. Load models from respective API's
+4. Individual model processing
+    - Subset model to desired spatiotemporal bounds
     - Regrid dataset to the common grid for model comparison
+    - Interpolate data from the surface to desired maximum depth
+    - Calculate the depth average current velocity
+    - Calculate magnitude of currents from u and v components
     - Compute the optimal path using the A* algorithm
     - Plot depth averaged current velocity data
-4. Model comparison processing
-    - Root Mean Square Difference (RMSD) Processing
-        - Generate all non-repeating combinations of selected model datasets
-        - Calculate RMSD
-        - Regrid RMSD data to common grid
-        - Plot RMSD data
+5. Model comparison processing
+    - Generate all non-repeating combinations of selected model datasets
+    - Calculate and plot simple differences
+    - Calculate and plot mean of simple differences
+    - Calculate and plot simple mean
+    - Calculate and plot Root Mean Square (RMS) Profile Difference
 
 ## Running the GGS2
 
@@ -37,29 +37,36 @@ As of the current version there are two ways to run the GGS2:
 
 Here is a list of all parameters and what they do:
 
-| variable | data type | valid inputs/format | Notes |
+| Variable | Data Type | Valid Inputs/Format | Notes |
 |---|---|---|---|
-| date | string | "YYYY-MM-DD" | Sample date |
-| depth | int | 0 - 1000 (recommended) | Maximum working depth (m) of glider model |
-| lat_min | float | -85 - 85 | Southern latitude bound |
-| lon_min | float | -180 - 180 | Western longitude bound |
-| lat_max | float | -85 - 85 | Northern latitude bound |
-| lon_max | float | -180 - 180 | Eastern longitude bound |
-| CMEMS_ | boolean | True - False | European Model |
-| ESPC_ | boolean | True - False | Navy Model |
-| RTOFS_EAST_ | boolean | True - False | NOAA model for US east coast |
-| RTOFS_WEST_ | boolean | True - False | NOAA model for US west coast |
-| RTOFS_PARALLEL_ | boolean | True - False | Experimental NOAA model for east coast |
-| COMPUTE_OPTIMAL_PATH | boolean | True - False | Compute the optimal path using an A* algorithm |
-| waypoints | list(tuple) | [(lat1, lon1), ..., (latx, lonx)] | List of coordinates to pass into the A* algorithm. Minimum of 2 points are required |
-| glider_raw_speed | float | --- | Raw speed of glider model |
-| RMSD | boolean | True - False | Calculate the root mean square difference between all selected model combinations |
-| make_magnitude_plot | boolean | True - False | Make a plot of depth averaged current magnitude contours |
-| make_threshold_plot | boolean | True - False | Make a plot of depth averaged current magnitude threshold contours |
-| make_rmsd_plot | boolean | True - False | Make a plot of the root mean squared difference between all model combinations |
-| vector_type | string | "quiver", "streamplot", None | Determines the vector type of the plot to show current direction |
-| density | int | --- | Density of streamlines. Higher number = denser streamlines |
-| scalar | int | --- | Downsampling scalar for quiver plots. Higher number = Less quivers |
-| save | boolean | True - False | Save figures locally in the GGS/figures directory |
+| MISSION_NAME | str | "mission" | Name of the mission configuration. |
+| START_DATE | str | "YYYY-MM-DD", "today", "tomorrow", "yesterday", or `None` | Sample start date |
+| END_DATE | str | "YYYY-MM-DD", "today", "tomorrow", "yesterday", or `None` | Sample end date |
+| SW_COORD | tuple(float, float) | (-90 - 90, -180 - 180) | Southwest boundary coordinate |
+| NE_COORD | tuple(float, float) | (-90 - 90, -180 - 180) | Northeast boundary coordinate |
+| MAX_DEPTH | int | 0 - 1000 (recommended) | Maximum working depth (m) of glider model |
+| CMEMS | bool | True - False | European Model |
+| ESPC | bool | True - False | Navy Model |
+| RTOFS_EAST | bool | True - False | NOAA model for US east coast |
+| RTOFS_WEST | bool | True - False | NOAA model for US west coast |
+| RTOFS_PARALLEL | bool | True - False | Experimental NOAA model for east coast |
+| COMPUTE_OPTIMAL_PATH | bool | True - False | Compute the optimal path using an A* algorithm |
+| WAYPOINTS | list(tuple) | [(lat1, lon1), ..., (latx, lonx)] | List of coordinates to pass into the A* algorithm. Minimum of 2 points are required |
+| GLIDER_RAW_SPEED | float | 0.5 (recommended) | Raw speed of glider model |
+| INDIVIDUAL_PLOTS | bool | True - False | Make plots of individual model products |
+| SIMPLE_DIFFERENCE | bool | True - False | Make plots of simple differences of each non-repeating pair of models |
+| MEAN_DIFFERENCES | bool | True - False | Plot the mean of the differences of each non-repeating pair of models |
+| SIMPLE_MEAN | bool | True - False | Plot the simple mean of all selected model combinations |
+| RMS_PROFILE_DIFFERENCE | bool | True - False | Plot the root mean square profile difference between all selected model combinations |
+| PLOT_MAGNITUDES | bool | True - False | Make a plot of depth averaged current magnitude contours |
+| PLOT_MAGNITUDE_THRESHOLDS | bool | True - False | Make a plot of depth averaged current magnitude threshold contours |
+| VECTOR_TYPE | string | "quiver", "streamplot", None | Determines the vector type of the plot to show current direction |
+| STREAMLINE_DENSITY | int | --- | Density of streamlines. Higher number = denser streamlines |
+| QUIVER_DOWNSCALING | int | --- | Downsampling scalar for quiver plots. Higher number = Less quivers |
+| SAVE_FIGURES | bool | True - False | Save figures locally in the GGS/figures directory |
+| save_config | bool | True - False | Save current options as a JSON file |
+| config_directory | str | "relative_path" | Directory that the config file will save to |
+| load_config | bool | True - False | Load locally stored config file |
+| config_name | str | "filename" | File name of the locally stored config file |
 
 __WARNING__: Failure to adhere to variable formatting will result in unexpected errors.
