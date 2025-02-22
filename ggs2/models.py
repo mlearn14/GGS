@@ -248,10 +248,11 @@ class RTOFS:
         self.optimal_path: list[tuple[float, float]] = None
         self.waypoints: list[tuple[float, float]] = None
 
-    def load(self) -> None:
+    def load(self, diag_text: bool = True) -> None:
         """Loads Eastward and Northward current velocities from the RTOFS model. Saves data to self.raw_data attribute."""
-        print("Loading RTOFS data...")
-        starttime = print_starttime()
+        if diag_text:
+            print("Loading RTOFS data...")
+            starttime = print_starttime()
 
         # Create a dictionary mapping source names to URLs
         # The URLs are Thredds Data Server URLs that point to the RTOFS model datasets
@@ -305,7 +306,8 @@ class RTOFS:
 
         # Add the model name as an attribute to the dataset
         ds.attrs["text_name"] = text_name
-        print(f"Model source: {text_name}")
+        if diag_text:
+            print(f"Model source: {text_name}")
 
         # Add the filename as an attribute to the dataset
         ds.attrs["model_name"] = model_name
@@ -313,10 +315,11 @@ class RTOFS:
         # Store the dataset in the instance variable
         self.raw_data = ds
 
-        print("Done.")
-        endtime = print_endtime()
-        print_runtime(starttime, endtime)
-        print()
+        if diag_text:
+            print("Done.")
+            endtime = print_endtime()
+            print_runtime(starttime, endtime)
+            print()
 
     def subset(self, dates: tuple, extent: tuple, depth: int = 1000) -> None:
         """
