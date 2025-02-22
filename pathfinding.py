@@ -396,6 +396,10 @@ def compute_a_star_path(
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
 
+    # Ensure data/mission_statistics directory exists
+    dir = "data/mission_statistics"
+    os.makedirs(dir, exist_ok=True)
+
     # Initialize a list to store the CSV data
     csv_data = [
         ("Segment Start", "Segment End", "Segment Time (s)", "Segment Distance (m)")
