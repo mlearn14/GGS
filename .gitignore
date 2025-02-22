@@ -1,6 +1,8 @@
 # local ignores
-data/*
+config/*
 figures/*
+products/*
+test
 streamlit_test.py
 streamlit_function.py
 ggsdashboard.py
