@@ -28,10 +28,10 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
 
 ## Running the GGS2
 
-As of the current version there are two ways to run the GGS2:
+As of the current version, GGS2 utilizes .JSON configuration files:
 
-1. `0_main.py`: Standard python file. Parameters may be edited at the start of the script. Running the python script can be done by pressing the "play" button (VS Code) or by running `python 0_main.py` in a Anaconda Powershell terminal.
-2. `0_dataviz.ipynb`: Jupyter Notebook file. Parameters are set in the first code cell. The notebook can be ran by pressing the "double triangle"/"Run All" button located in the ribbon at the top of the screen.
+1. `0_dataviz.ipynb`: Jupyter Notebook file. Parameters are set in the first code cell. The notebook can be ran by pressing the "double triangle"/"Run All" button located in the ribbon at the top of the screen.
+2. `0_main.py`: Standard python file. Parameters are set in a config .JSON file before being parsed as an argument. Running the python script can be done by running `python 0_main.py "config_fname"` in a Anaconda Powershell terminal when in the same working directory. `"config_name"` should be replaced with the name of the config file you wish to use sans file suffix.
 
 ## Parameter Selection
 
