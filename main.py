@@ -1,10 +1,7 @@
 # author: matthew learn (matt.learn@marine.rutgers.edu)
-from functions import *
-from models import *
-from model_processing import *
-from pathfinding import *
-from plotting import *
 import argparse
+import datetime as dt
+from ggs2 import *
 import itertools
 import json
 
