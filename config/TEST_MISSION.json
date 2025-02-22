@@ -45,9 +45,9 @@
 
         "COMPARISON_PLOTS": {
             "SIMPLE_DIFFERENCE": true,
-            "MEAN_DIFFERENCE": true,
-            "SIMPLE_MEAN": true,
-            "RMS_PROFILE_DIFFERENCE": true
+            "MEAN_DIFFERENCE": false,
+            "SIMPLE_MEAN": false,
+            "RMS_PROFILE_DIFFERENCE": false
         },
 
         "PLOT_MAGNITUDES": true,
