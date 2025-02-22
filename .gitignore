@@ -1,12 +1,9 @@
 # local ignores
-config/*
-figures/*
-products/*
+config
+figures
+products
 test
-streamlit_test.py
-streamlit_function.py
-ggsdashboard.py
-0_debugging.ipynb
+dashboard
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
