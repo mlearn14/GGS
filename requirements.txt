@@ -1,6 +1,6 @@
 Cartopy==0.24.0
 cmocean==4.0.3
-cool_maps==1.0.1
+cool_maps==0.0.3
 copernicusmarine==2.0.1
 matplotlib==3.10.0
 numpy==2.2.3
