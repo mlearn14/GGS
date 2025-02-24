@@ -97,6 +97,10 @@ def print_runtime(starttime: datetime, endtime: datetime) -> None:
 
 def ticket_report(params: dict) -> None:
     """Prints the ticket report for the selected parameters."""
+    waypoints = params["waypoints"]
+    if waypoints is not None:
+        waypoints = ",\n\t   ".join([f"({y}°, {x}°)" for x, y in params["waypoints"]])
+
     contour_dict = {"magnitude": "Magnitude", "threshold": "Magnitude Threshold"}
     vector_dict = {"quiver": "Quiver", "streamplot": "Streamplot"}
     comp_dict = {
@@ -116,7 +120,7 @@ def ticket_report(params: dict) -> None:
         "Pathfinding": params["pathfinding"],
         "Algorithm": params["algorithm"],
         "Heuristic": params["heuristic"],
-        "Waypoints": ",\n\t   ".join([f"({y}°, {x}°)" for x, y in params["waypoints"]]),
+        "Waypoints": waypoints,
         "Glider Raw Speed": f"{params["glider_raw_speed"]} m/s",
         "Individual Plots": params["indv_plots"],
         "Contours": ", ".join(contour_dict[plot] for plot in params["contours"]),
