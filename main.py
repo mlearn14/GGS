@@ -96,10 +96,9 @@ def main() -> None:
     ]
 
     # convert waypoints from list[list[float, float]] to list[tuple[float, float]]
-    if PATHFINDING["WAYPOINTS"] is not None:
-        PATHFINDING["WAYPOINTS"] = [
-            (waypoint[0], waypoint[1]) for waypoint in PATHFINDING["WAYPOINTS"]
-        ]
+    PATHFINDING["WAYPOINTS"] = [
+        (waypoint[0], waypoint[1]) for waypoint in PATHFINDING["WAYPOINTS"]
+    ]
 
     # initialize contour list
     contour_select_dict = {

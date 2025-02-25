@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import xarray as xr
+from matplotlib.colors import TwoSlopeNorm
 
 import datetime as dt
 import os
@@ -241,7 +242,7 @@ def create_cbar(fig: object, ax: object, im: object, label: str) -> object:
             ax.get_position().height,
         ]
     )
-    plt.colorbar(im, cax=cax, label=label)
+    plt.colorbar(im, cax=cax, format="%.2f", label=label)
 
     # return the cax object instead of the colorbar object because matplotlib is weird and gets mad when I do cbar.remove()
     return cax
@@ -607,17 +608,20 @@ def populate_map(
     elif contour_type == "simple_diff":
         plot_title = "Depth Averaged Current Differences"
         label = r"Difference ($\mathregular{ms^{-1}}$)"
-        levels = np.linspace(-0.75, 0.75, 11)
+        # levels = np.linspace(-0.75, 0.75, 11)
+
+        norm = TwoSlopeNorm(vcenter=0)
 
         contourf = ax.contourf(
             lon2D,
             lat2D,
             data.magnitude,
             transform=ccrs.PlateCarree(),
-            levels=levels,
+            norm=norm,
             extend="both",
             cmap=cmo.balance,
         )
+        # levels = levels
         cax = create_cbar(fig, ax, contourf, label)
         ax_pos = ax.get_position()
         top = ax_pos.y1
