@@ -698,14 +698,7 @@ def create_map(
     ----------
     - data (Dataset): Data to be plotted.
     - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-    - contour_type (str): Type of contour. Options are:
-        - 'magnitude',
-        - 'threshold',
-        - 'simple_diff',
-        - 'mean_diff',
-        - 'mean_magnitude',
-        - 'mean_threshold',
-        - 'rmsd_profile'
+    - contour_type (str): Type of contour. Options are: 'magnitude', 'threshold', 'simple_diff', 'mean_diff', 'mean_magnitude', 'mean_threshold', & 'rmsd_profile'
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
     - density (int): Density of streamlines. Defaults to 5.
     - scalar (int): Scalar for subsampling data. Defaults to 4.
