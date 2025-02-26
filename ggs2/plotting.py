@@ -617,17 +617,14 @@ def populate_map(
 
         # Case 1: If all values are negative, set vmin and vmax to match the negative range
         if max_mag <= 0:
-            print("Case 1: All values are negative")
             vmin, vmax = min_mag, 1e-6
 
         # Case 2: If all values are positive, set vmin and vmax to match the positive range
         elif min_mag >= 0:
-            print("Case 2: All values are positive")
             vmin, vmax = -1e-6, max_mag
 
         # Case 3: Mixed positive and negative values (default behavior)
         else:
-            print("Case 3: Mixed positive and negative values")
             max_abs_diff = max(abs(min_mag), abs(max_mag))
             vmin, vmax = -max_abs_diff, max_abs_diff
 
