@@ -107,9 +107,13 @@ def main() -> None:
     }
     contour_type = [cntr for cntr, selected in contour_select_dict.items() if selected]
 
+    # fix for backwards compatibility
+    if COMPARISON_PLOTS["SIMPLE_DIFFERENCE"]:
+        COMPARISON_PLOTS["SPEED_DIFFERENCE"] = COMPARISON_PLOTS["SIMPLE_DIFFERENCE"]
+
     # initialize comparison list
     comparison_selection_dict = {
-        "simple_diff": COMPARISON_PLOTS["SIMPLE_DIFFERENCE"],
+        "speed_diff": COMPARISON_PLOTS["SPEED_DIFFERENCE"],
         "mean_diff": COMPARISON_PLOTS["MEAN_DIFFERENCE"],
         "simple_mean": COMPARISON_PLOTS["SIMPLE_MEAN"],
         "rmsd_profile": COMPARISON_PLOTS["RMS_PROFILE_DIFFERENCE"],
@@ -200,9 +204,9 @@ def main() -> None:
     )
     if comparison_list is not None and comparison_list:
         for comparison in comparison_list:
-            if comparison == "simple_diff":
+            if comparison == "speed_diff":
                 plot_data = [
-                    calculate_simple_diff(model1, model2)
+                    calculate_speed_diff(model1, model2)
                     for model1, model2 in model_combos
                 ]
             elif comparison == "rmsd_profile":

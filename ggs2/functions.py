@@ -104,7 +104,7 @@ def ticket_report(params: dict) -> None:
     contour_dict = {"magnitude": "Magnitude", "threshold": "Magnitude Threshold"}
     vector_dict = {"quiver": "Quiver", "streamplot": "Streamplot"}
     comp_dict = {
-        "simple_diff": "Simple Difference",
+        "speed_diff": "Speed Difference",
         "mean_diff": "Mean Difference",
         "simple_mean": "Simple Mean",
         "rmsd_profile": "RMS Profile Difference",
@@ -153,6 +153,7 @@ def model_raw_report(model_list: list[object]) -> None:
     print(f"Maximum date: {min(max_date_list).astype(str).split('T')[0]}")
 
 
+# will be useful for parallel processing for multiple timestamps
 def optimal_workers(power: float = 1.0) -> int:
     """
     Calculate the optimal number of workers for parallel processing based on the available CPU cores and a power factor.
@@ -230,7 +231,6 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
     return ds1_regridded
 
 
-# Calculation funtions
 def interpolate_depth(
     model: object, max_depth: int = 1000, diag_text: bool = True
 ) -> xr.Dataset:
