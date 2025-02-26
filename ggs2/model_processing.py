@@ -107,9 +107,9 @@ def process_individual_model(
         model.optimal_path = None
 
 
-def calculate_simple_diff(model1: object, model2: object) -> xr.Dataset:
+def calculate_speed_diff(model1: object, model2: object) -> xr.Dataset:
     """
-    Calculates the simple difference between two datasets. Returns a single xr.Dataset of the simple difference.
+    Calculates the simple difference of the speed between two datasets. Returns a single xr.Dataset of the simple difference.
 
     Args:
     ----------
@@ -134,12 +134,12 @@ def calculate_simple_diff(model1: object, model2: object) -> xr.Dataset:
     text_name = " & ".join([text_name1, text_name2])
     model_name = "+".join([model_name1, model_name2])
 
-    print(f"{text_name}: Calculating Simple Difference...")
+    print(f"{text_name}: Calculating Speed Difference...")
     starttime = print_starttime()
 
     simple_diff = data1 - data2
-    simple_diff.attrs["model_name"] = f"{model_name}_simple_diff"
-    simple_diff.attrs["text_name"] = f"Simple Difference [{text_name}]"
+    simple_diff.attrs["model_name"] = f"{model_name}_speed_diff"
+    simple_diff.attrs["text_name"] = f"Speed Difference [{text_name}]"
     simple_diff.attrs["model1_name"] = data1.attrs["text_name"]
     simple_diff.attrs["model2_name"] = data2.attrs["text_name"]
 

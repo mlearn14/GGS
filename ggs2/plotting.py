@@ -494,7 +494,7 @@ def populate_map(
     Arg:
     -----------
     - contour_type (str): Type of contour.
-        - Options: 'magnitude', 'threshold', 'simple_diff', 'mean_diff', 'rmsd', 'mean_magnitude', & 'mean_threshold'
+        - Options: 'magnitude', 'threshold', 'speed_diff', 'mean_diff', 'rmsd', 'mean_magnitude', & 'mean_threshold'
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
         -  NOTE: RTOFS must be regridded prior to being passed to this function for quiver to work.
     - fig (object): Figure object.
@@ -605,12 +605,34 @@ def populate_map(
         )
         cax = create_cbar(fig, ax, contourf, label)
 
-    elif contour_type == "simple_diff":
-        plot_title = "Depth Averaged Current Differences"
+    elif contour_type == "speed_diff":
+        plot_title = "Depth Averaged Current Speed Differences"
         label = r"Difference ($\mathregular{ms^{-1}}$)"
-        # levels = np.linspace(-0.75, 0.75, 11)
 
-        norm = TwoSlopeNorm(vcenter=0)
+        min_mag = np.nanmin(data.magnitude.values)
+        max_mag = np.nanmax(data.magnitude.values)
+
+        print(f"Minimum magnitude: {min_mag}")
+        print(f"Maximum magnitude: {max_mag}")
+
+        # Case 1: If all values are negative, set vmin and vmax to match the negative range
+        if max_mag <= 0:
+            print("Case 1: All values are negative")
+            vmin, vmax = min_mag, 1e-6
+
+        # Case 2: If all values are positive, set vmin and vmax to match the positive range
+        elif min_mag >= 0:
+            print("Case 2: All values are positive")
+            vmin, vmax = -1e-6, max_mag
+
+        # Case 3: Mixed positive and negative values (default behavior)
+        else:
+            print("Case 3: Mixed positive and negative values")
+            max_abs_diff = max(abs(min_mag), abs(max_mag))
+            vmin, vmax = -max_abs_diff, max_abs_diff
+
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        levels = np.linspace(vmin, vmax, 11)
 
         contourf = ax.contourf(
             lon2D,
@@ -618,10 +640,11 @@ def populate_map(
             data.magnitude,
             transform=ccrs.PlateCarree(),
             norm=norm,
+            levels=levels,
             extend="both",
             cmap=cmo.balance,
         )
-        # levels = levels
+
         cax = create_cbar(fig, ax, contourf, label)
         ax_pos = ax.get_position()
         top = ax_pos.y1
@@ -702,7 +725,7 @@ def create_map(
     ----------
     - data (Dataset): Data to be plotted.
     - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-    - contour_type (str): Type of contour. Options are: 'magnitude', 'threshold', 'simple_diff', 'mean_diff', 'mean_magnitude', 'mean_threshold', & 'rmsd_profile'
+    - contour_type (str): Type of contour. Options are: 'magnitude', 'threshold', 'speed_diff', 'mean_diff', 'mean_magnitude', 'mean_threshold', & 'rmsd_profile'
     - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
     - density (int): Density of streamlines. Defaults to 5.
     - scalar (int): Scalar for subsampling data. Defaults to 4.
@@ -748,8 +771,8 @@ def create_map(
         contour_text = "simple mean magnitude"
     elif contour_type == "mean_threshold":
         contour_text = "simple mean magnitude threshold"
-    elif contour_type == "simple_diff":
-        contour_text = "simple difference"
+    elif contour_type == "speed_diff":
+        contour_text = "speed difference"
     else:
         contour_text = contour_type
 
