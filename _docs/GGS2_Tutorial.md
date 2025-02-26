@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.1.0
+Last updated for v1.1.1
 
 ## Overview
 
@@ -30,8 +30,12 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
 
 As of the current version, GGS2 utilizes .JSON configuration files:
 
-1. `0_dataviz.ipynb`: Jupyter Notebook file. Parameters are set in the first code cell. The notebook can be ran by pressing the "double triangle"/"Run All" button located in the ribbon at the top of the screen.
-2. `0_main.py`: Standard python file. Parameters are set in a config .JSON file before being parsed as an argument. Running the python script can be done by running `python 0_main.py "config_fname"` in a Anaconda Powershell terminal when in the same working directory. `"config_name"` should be replaced with the name of the config file you wish to use sans file suffix.
+1. `dataviz.ipynb`: Jupyter Notebook file. Parameters are set in the first code cell, or by setting `load_config` in the second cell to `True`, followed by the config filename sans suffix for `config_name`. The notebook can be ran by pressing the "double triangle"/"Run All" button located in the ribbon at the top of the screen. Users have the options to save their set parameters to a config .JSON file.
+2. `main.py`: Standard python file. Parameters are set in a config .JSON file before being parsed as an argument. Running the python script can be done by running `python main.py --config_name "config_fname"` in a Anaconda Powershell terminal when in the same working directory. `"config_fname"` should be replaced with the name of the config file you wish to use sans file suffix.
+
+## Configuration Files
+
+Configuration, or config, files are parameters for specific GGS2 runs that can be saved locally and shared. Utilizing the flexible .JSON file format, config files can be easily saved, read, and shared to allow for easily and rapidly reproducable products. By default, all config files are saved to `GGS/config`.
 
 ## Parameter Selection
 
@@ -54,7 +58,7 @@ Here is a list of all parameters and what they do:
 | WAYPOINTS | list(tuple) | [(lat1, lon1), ..., (latx, lonx)] | List of coordinates to pass into the A* algorithm. Minimum of 2 points are required |
 | GLIDER_RAW_SPEED | float | 0.5 (recommended) | Raw speed of glider model |
 | INDIVIDUAL_PLOTS | bool | True - False | Make plots of individual model products |
-| SIMPLE_DIFFERENCE | bool | True - False | Make plots of simple differences of each non-repeating pair of models |
+| SPEED_DIFFERENCE | bool | True - False | Make plots of the differences depth averaged speeds of each non-repeating pair of models |
 | MEAN_DIFFERENCES | bool | True - False | Plot the mean of the differences of each non-repeating pair of models |
 | SIMPLE_MEAN | bool | True - False | Plot the simple mean of all selected model combinations |
 | RMS_PROFILE_DIFFERENCE | bool | True - False | Plot the root mean square profile difference between all selected model combinations |
