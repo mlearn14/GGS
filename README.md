@@ -26,7 +26,9 @@ This README will cover the installation of the Glider Guidance System 2 (GGS2) a
 
 ## Python Requirements
 
-An environment that includes all requirements to run the GGS2 can be found by running `ggs2.yml` in any Anaconda powershell terminal through the following line: `conda env create -f ggs2.yml`.<br><br>If instead the user wishes to create their own environment manually, run `conda create -n env_name` and `conda activate env_name`, replacing `env_name` with a name of their choice. Then, using the command `conda install -c conda-forge package`, replacing `package` with the name of the module/package/library, must be run to install the following:
+An environment that includes all requirements to run the GGS2 can be found by running `ggs2.yml` in any Anaconda powershell terminal through the following line: `conda env create -f ggs2.yml`.
+
+If instead the user wishes to create their own environment manually, run `conda create -n env_name` and `conda activate env_name`, replacing `env_name` with a name of their choice. Then, using the command `conda install -c conda-forge package`, replacing `package` with the name of the module/package/library, must be run to install the following:
 
 - cartopy
 - cmocean
