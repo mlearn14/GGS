@@ -66,8 +66,6 @@ class CMEMS:
         ds.attrs["text_name"] = "CMEMS"
         ds.attrs["model_name"] = "CMEMS"
 
-        # ds = ds.chunk("auto")
-
         self.raw_data = ds  # keeps the raw data just in case
 
         if diag_text:

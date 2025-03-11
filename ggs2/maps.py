@@ -603,8 +603,6 @@ def populate_map(
 
     elif contour_type == "speed_diff":
         plot_title = "Depth Averaged Current Speed Differences"
-    elif contour_type == "speed_diff":
-        plot_title = "Depth Averaged Current Speed Differences"
         label = r"Difference ($\mathregular{ms^{-1}}$)"
 
         min_mag = np.nanmin(data.magnitude.values)
