@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.1.1
+Last updated for v1.2.0
 
 ## Overview
 
@@ -59,9 +59,11 @@ Here is a list of all parameters and what they do:
 | GLIDER_RAW_SPEED | float | 0.5 (recommended) | Raw speed of glider model |
 | INDIVIDUAL_PLOTS | bool | True - False | Make plots of individual model products |
 | SPEED_DIFFERENCE | bool | True - False | Make plots of the differences depth averaged speeds of each non-repeating pair of models |
+| U_DIFFERENCE | bool | True - False | Make plots of the difference of the eastward depth averaged velocity component of each non-repeating pair of models |
+| V_DIFFERENCE | bool | True - False | Make plots of the difference of the northward depth averaged velocity component of each non-repeating pair of models |
 | MEAN_DIFFERENCES | bool | True - False | Plot the mean of the differences of each non-repeating pair of models |
 | SIMPLE_MEAN | bool | True - False | Plot the simple mean of all selected model combinations |
-| RMS_PROFILE_DIFFERENCE | bool | True - False | Plot the root mean square profile difference between all selected model combinations |
+| RMS_VERTICAL_DIFFERENCE | bool | True - False | Plot the root mean square vertical difference between all selected model combinations |
 | PLOT_MAGNITUDES | bool | True - False | Make a plot of depth averaged current magnitude contours |
 | PLOT_MAGNITUDE_THRESHOLDS | bool | True - False | Make a plot of depth averaged current magnitude threshold contours |
 | VECTOR_TYPE | string | "quiver", "streamplot", None | Determines the vector type of the plot to show current direction |

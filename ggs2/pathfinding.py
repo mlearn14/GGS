@@ -9,7 +9,7 @@ import heapq
 from math import radians, cos, sin, asin, sqrt
 import os
 
-from .functions import print_starttime, print_endtime, print_runtime
+from .util import print_starttime, print_endtime, print_runtime
 
 
 def compute_a_star_path(
@@ -395,7 +395,6 @@ def compute_a_star_path(
 
     # Define variables
     ds = model.da_data
-    ds = ds.load()  # load the data. if chunked, the algorithm will run incredibly slow!
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
 
@@ -406,6 +405,11 @@ def compute_a_star_path(
 
     print(f"{text_name}: Calculating A* optimal path...")
     starttime = print_starttime()
+
+    # load the data. if chunked, the algorithm will run incredibly slow!
+    print("computing..")
+    ds = ds.compute()
+    print(ds)
 
     # Ensure the waypoints are float tuples
     waypoints_list = [(float(lat), float(lon)) for lat, lon in waypoints_list]
@@ -475,7 +479,6 @@ def compute_a_star_path(
     print("Done.")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
-    print()
 
     return optimal_mission_path
 
