@@ -630,7 +630,6 @@ def populate_map(
             data.magnitude,
             transform=ccrs.PlateCarree(),
             norm=norm,
-            norm=norm,
             levels=levels,
             extend="both",
             cmap=cmo.balance,
