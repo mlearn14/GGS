@@ -422,6 +422,10 @@ def process_common_grid(
     return common_grid
 
 
+from dask.diagnostics import ProgressBar
+import sys
+
+
 def process_individual_model(
     model: object,
     common_grid: xr.Dataset,
@@ -459,16 +463,20 @@ def process_individual_model(
 
     # interpolate depth
     model.z_interpolated_data = interpolate_depth(model, depth, diag_text=False)
-    print("Persisting...", end="")
-    model.z_interpolated_data = model.z_interpolated_data.persist()
-    print("Done.")
+    print("Persisting:", end="")
+    sys.stdout.flush()  # make sure print statement is made
+    with ProgressBar():
+        model.z_interpolated_data = model.z_interpolated_data.persist()
+    # print("Done.")
 
     # depth average
     model.da_data = depth_average(model, diag_text=False)
     model.da_data = calculate_magnitude(model, diag_text=False)
-    print("Computing...", end="")
-    model.da_data = model.da_data.compute()
-    print("Done.")
+    print("Computing:", end="")
+    sys.stdout.flush()  # make sure print statement is made
+    with ProgressBar():
+        model.da_data = model.da_data.compute()
+    # print("Done.")
 
     print("Processing Done.")
     endtime = print_endtime()
