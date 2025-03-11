@@ -38,6 +38,5 @@ An environment that includes all requirements to run the GGS2 can be found by ru
 - numpy
 - pandas
 - python
-- streamlit
 - xarray
 - xesmf

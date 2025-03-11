@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 import copernicusmarine as cm
 
-from .functions import print_starttime, print_endtime, print_runtime
+from .util import print_starttime, print_endtime, print_runtime
 
 
 class CMEMS:
@@ -66,13 +66,14 @@ class CMEMS:
         ds.attrs["text_name"] = "CMEMS"
         ds.attrs["model_name"] = "CMEMS"
 
+        # ds = ds.chunk("auto")
+
         self.raw_data = ds  # keeps the raw data just in case
 
         if diag_text:
             print("Done.")
             endtime = print_endtime()
             print_runtime(starttime, endtime)
-            print()
 
     def subset(
         self, dates: tuple, extent: tuple, depth: int = 1100, diag_text: bool = True
@@ -158,6 +159,8 @@ class ESPC:
         ds = ds.assign_coords(lon=(ds.lon - 180) % 360 - 180)
         ds = ds.sortby("lon")
 
+        ds = ds.drop_vars("time_run")
+
         ds.attrs["text_name"] = "ESPC"
         ds.attrs["model_name"] = "ESPC"
 
@@ -167,7 +170,6 @@ class ESPC:
             print("Done.")
             endtime = print_endtime()
             print_runtime(starttime, endtime)
-            print()
 
     def subset(
         self, dates: tuple, extent: tuple, depth: int = 1000, diag_text: bool = True
@@ -302,7 +304,8 @@ class RTOFS:
             }
         )
 
-        # ds = ds.set_coords(["lon", "lat"])  # set lon and lat as coordinates
+        # Drop unnecessary variables
+        ds = ds.drop_vars(["temperature", "salinity", "Date"])
 
         # Add the model name as an attribute to the dataset
         ds.attrs["text_name"] = text_name
@@ -319,21 +322,23 @@ class RTOFS:
             print("Done.")
             endtime = print_endtime()
             print_runtime(starttime, endtime)
-            print()
 
-    def subset(self, dates: tuple, extent: tuple, depth: int = 1000) -> None:
+    def subset(
+        self, dates: tuple, extent: tuple, depth: int = 1000, diag_text: bool = True
+    ) -> None:
         """
         Subsets the RTOFS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.subset_data attribute.
 
-        Args:
+        Args
         ----------
-            - dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-            - depth (int, optional): The maximum depth in meters. Defaults to 1000.
+            dates (tuple): A tuple of (date_min, date_max) in datetime format.
+            extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+            depth (int, optional): The maximum depth in meters. Defaults to 1000.
+            diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
-        Returns:
+        Returns
         ----------
-            - `None`
+            `None`
         """
         # unpack the dates and extent tuples
         text_name = self.raw_data.attrs["text_name"]
@@ -381,4 +386,5 @@ class RTOFS:
 
         self.subset_data = self.subset_data.chunk("auto")
 
-        print(f"{text_name}: Subsetted data.\n")
+        if diag_text:
+            print(f"{text_name}: Subsetted data.\n")
