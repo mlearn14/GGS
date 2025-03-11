@@ -4,121 +4,206 @@
 
 import numpy as np
 import xarray as xr
+import xesmf as xe
 
 import datetime
+from datetime import datetime as dt
 import itertools
 
-from .functions import *
+from .util import print_starttime, print_endtime, print_runtime
 from .models import CMEMS, ESPC
 from .pathfinding import *
 
 
-def process_common_grid(extent: tuple, depth: int) -> xr.Dataset:
+"""
+Section 1: Individual Model Processing Functions
+"""
+
+
+def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Dataset:
     """
-    Loads and subsets data from CMEMS to act as a common grid for all models. In the event of a failure, ESPC will be used as a common grid instead.
+    Regrids the first dataset to the second dataset.
 
     Args:
     ----------
-        - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        - depth (int): The maximum depth in meters.
+        - ds1 (xr.Dataset): The first dataset. This is the dataset that will be regridded.
+        - ds2 (xr.Dataset): The second dataset. This is the dataset that the first dataset will be regridded to.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
     Returns:
     ----------
-        - common_grid (xr.Dataset): Common grid data.
+        - ds1_regridded (xr.Dataset): The first dataset regridded to the second dataset.
     """
-    print("Setting up COMMON_GRID...")
-    starttime = print_starttime()
+    text_name = ds1.attrs["text_name"]
+    model_name = ds1.attrs["model_name"]
 
-    try:
-        temp = CMEMS()
-        temp.load(diag_text=False)
-        temp.raw_data.attrs["text_name"] = "COMMON GRID"
-        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
-        today = datetime.today().strftime("%Y-%m-%d")
-        temp.subset((today, today), extent, depth, diag_text=False)
-        common_grid = temp.subset_data
-    except Exception as e:
-        print(f"ERROR: Failed to process CMEMS COMMON GRID data due to: {e}\n")
-        print("Processing ESPC COMMON GRID instead...\n")
-        temp = ESPC()
-        temp.load(diag_text=False)
-        temp.raw_data.attrs["text_name"] = "COMMON GRID"
-        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
-        today = datetime.today().strftime("%Y-%m-%d")
-        temp.subset((today, today), extent, depth, diag_text=False)
-        common_grid = temp.subset_data
+    if diag_text:
+        print(f"{text_name}: Regridding to {ds2.attrs['text_name']}...")
+        starttime = print_starttime()
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    # Code from Mike Smith.
+    ds1_regridded = ds1.reindex_like(ds2, method="nearest")
 
-    return common_grid
+    grid_out = xr.Dataset({"lat": ds2["lat"], "lon": ds2["lon"]})
+    regridder = xe.Regridder(ds1, grid_out, "bilinear", extrap_method="nearest_s2d")
+
+    ds1_regridded = regridder(ds1)
+    ds1_regridded.attrs["text_name"] = text_name
+    ds1_regridded.attrs["model_name"] = model_name
+
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+
+    return ds1_regridded
 
 
-def process_individual_model(
+def interpolate_depth(
     model: object,
-    common_grid: xr.Dataset,
-    dates: tuple,
-    extent: tuple,
-    depth: int,
-    single_date: bool,
-    pathfinding: dict,
-    mission_name: str = None,
-) -> None:
+    max_depth: int = 1000,
+    diag_text: bool = True,
+) -> xr.Dataset:
     """
-    Processes individual model data. Assigns regridded subset data,
-    1 meter interval interpolated data, & depth averaged to model class attributes.
+    Interpolates the model data to 1 meter depth intervals.
+
+    Args
+    ----------
+        model (object): The model data.
+        max_depth (int, optional): The maximum depth to interpolate to. Defaults to 1000.
+        common_grid (xr.Dataset): The common grid to interpolate to (CMEMS ONLY).
+        diag_text (bool, optional): Print diagnostic text. Defaults to True.
+
+    Returns:
+    ----------
+        ds_interp (xr.Dataset): The interpolated model data.
+    """
+    ds = model.subset_data
+
+    text_name = ds.attrs["text_name"]
+    model_name = ds.attrs["model_name"]
+
+    # Define the depth range that will be interpolated to.
+    z_range = np.arange(0, max_depth + 1, 1)
+
+    u = ds["u"]
+    v = ds["v"]
+
+    if diag_text:
+        print(f"{text_name}: Interpolating depth...")
+        starttime = print_starttime()
+
+    u_interp = u.interp(depth=z_range)
+    v_interp = v.interp(depth=z_range)
+
+    ds_interp = xr.Dataset({"u": u_interp, "v": v_interp})
+
+    ds_interp.attrs["text_name"] = text_name
+    ds_interp.attrs["model_name"] = model_name
+    ds_interp = ds_interp.chunk("auto")
+
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+
+    return ds_interp
+
+
+def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
+    """
+    Gets the depth integrated current velocities from the passed model data.
 
     Args:
     ----------
         - model (object): The model data.
-        - common_grid (xr.Dataset): Common grid data.
-        - dates (tuple): A tuple of (date_min, date_max) in datetime format.
-        - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-        - depth (int): The maximum depth in meters.
-        - single_date (bool): Boolean indicating whether to subset data to a single datetime.
-        - pathfinding (dict): Dictionary of pathfinding parameters.
-    """
-    # subset
-    model.subset(dates, extent, depth)
-    if single_date:
-        model.subset_data = model.subset_data.isel(time=0)
-    model.subset_data = regrid_ds(model.subset_data, common_grid)
-
-    # interpolate depth
-    model.z_interpolated_data = interpolate_depth(model, depth)
-
-    # depth average
-    model.da_data = depth_average(model)
-    model.da_data = calculate_magnitude(model)
-
-    # pathfinding
-    if pathfinding["ENABLE"]:
-        model.waypoints = pathfinding["WAYPOINTS"]
-        model.optimal_path = compute_a_star_path(
-            pathfinding["WAYPOINTS"],
-            model,
-            pathfinding["GLIDER_RAW_SPEED"],
-            mission_name,
-        )
-    else:
-        model.waypoints = None
-        model.optimal_path = None
-
-
-def calculate_speed_diff(model1: object, model2: object) -> xr.Dataset:
-    """
-    Calculates the simple difference of the speed between two datasets. Returns a single xr.Dataset of the simple difference.
-
-    Args:
-    ----------
-        - model1 (object): The first model.
-        - model2 (object): The second model.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
     Returns:
     ----------
-        - simple_diff (xr.Dataset): The simple difference between the two datasets.
+        - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
+    """
+    ds = model.z_interpolated_data
+
+    text_name = ds.attrs["text_name"]
+    model_name = ds.attrs["model_name"]
+
+    if diag_text:
+        print(f"{text_name}: Depth averaging...")
+        starttime = print_starttime()
+
+    ds_da = ds.mean(dim="depth", keep_attrs=True)
+
+    ds_da.attrs["text_name"] = text_name
+    ds_da.attrs["model_name"] = model_name
+
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+
+    return ds_da
+
+
+def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
+    """
+    Calculates the magnitude of the model data.
+
+    Args:
+    ----------
+        - model (object): The model data.
+        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
+
+    Returns:
+    ----------
+        - data_mag (xr.Dataset): The model data with a new variable 'magnitude'.
+    """
+    data = model.da_data
+
+    text_name = data.attrs["text_name"]
+    model_name = data.attrs["model_name"]
+
+    if diag_text:
+        print(f"{text_name}: Calculating magnitude...")
+        starttime = print_starttime()
+
+    # Calculate magnitude (derived from Pythagoras)
+    magnitude = np.sqrt(data["u"] ** 2 + data["v"] ** 2)
+
+    magnitude.attrs["text_name"] = text_name
+    magnitude.attrs["model_name"] = model_name
+    data = data.assign(magnitude=magnitude)
+    data = data.chunk("auto")  # just to make sure
+
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+
+    return data
+
+
+"""
+Section 2: Model Comparison Calculations
+"""
+
+
+def calculate_simple_diff(
+    model1: object, model2: object, diag_text: bool = True
+) -> xr.Dataset:
+    """
+    Calculates the simple difference between two datasets. Returns a single xr.Dataset of the simple difference.
+
+    Args
+    ----------
+        model1 (object): The first model.
+        model2 (object): The second model.
+        diag_text (bool, optional): Print diagnostic text.
+
+
+    Returns
+    ----------
+        simple_diff (xr.Dataset): The simple difference between the two datasets.
     """
     data1 = model1.da_data
     data2 = model2.da_data
@@ -134,8 +219,9 @@ def calculate_speed_diff(model1: object, model2: object) -> xr.Dataset:
     text_name = " & ".join([text_name1, text_name2])
     model_name = "+".join([model_name1, model_name2])
 
-    print(f"{text_name}: Calculating Speed Difference...")
-    starttime = print_starttime()
+    if diag_text:
+        print(f"{text_name}: Calculating Simple Difference...")
+        starttime = print_starttime()
 
     simple_diff = data1 - data2
     simple_diff.attrs["model_name"] = f"{model_name}_speed_diff"
@@ -143,29 +229,30 @@ def calculate_speed_diff(model1: object, model2: object) -> xr.Dataset:
     simple_diff.attrs["model1_name"] = data1.attrs["text_name"]
     simple_diff.attrs["model2_name"] = data2.attrs["text_name"]
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
 
     return simple_diff
 
 
-def calculate_rmsd_profile(
-    model1: object, model2: object, regrid: bool = False
+def calculate_rms_vertical_diff(
+    model1: object, model2: object, regrid: bool = False, diag_text: bool = True
 ) -> xr.Dataset:
     """
-    Calculates the root mean squared difference between two datasets.
+    Calculates the vertical root mean squared difference between two datasets.
 
-    Args:
+    Args
     ----------
-        - model1 (object): The first model.
-        - model2 (object): The second model.
-        - regrid (bool, optional): Whether to regrid datasets. Defaults to `False`.
+        model1 (object): The first model.
+        model2 (object): The second model.
+        regrid (bool, optional): Whether to regrid datasets. Defaults to `False`.\
+        diag_text (bool, optional): Print diagnostic text.
 
     Returns:
     ----------
-        - rmsd (xr.Dataset): The root mean squared difference between the two datasets.
+        vrmsd (xr.Dataset): The vertical root mean squared difference between the two datasets.
     """
     data1 = model1.z_interpolated_data
     data2 = model2.z_interpolated_data
@@ -181,8 +268,9 @@ def calculate_rmsd_profile(
     text_name = " & ".join([text_name1, text_name2])
     model_name = "+".join([model_name1, model_name2])
 
-    print(f"{text_name}: Calculating RMSD...")
-    starttime = print_starttime()
+    if diag_text:
+        print(f"{text_name}: Calculating RMSD...")
+        starttime = print_starttime()
 
     if regrid:
         data2 = regrid_ds(data2, data1, diag_text=False)  # regrid model2 to model1.
@@ -191,37 +279,41 @@ def calculate_rmsd_profile(
     delta_u = data1.u - data2.u
     delta_v = data1.v - data2.v
 
-    rmsd_u = np.sqrt(np.square(delta_u).mean(dim="depth"))
-    rmsd_v = np.sqrt(np.square(delta_v).mean(dim="depth"))
-    rmsd_mag = np.sqrt(rmsd_u**2 + rmsd_v**2)
+    vrmsd_u = np.sqrt(np.square(delta_u).mean(dim="depth"))
+    vrmsd_v = np.sqrt(np.square(delta_v).mean(dim="depth"))
+    vrmsd_mag = np.sqrt(vrmsd_u**2 + vrmsd_v**2)
 
-    rmsd = xr.Dataset(
-        {"u": rmsd_u, "v": rmsd_v, "magnitude": rmsd_mag},
+    vrmsd = xr.Dataset(
+        {"u": vrmsd_u, "v": vrmsd_v, "magnitude": vrmsd_mag},
         attrs={"text_name": text_name, "model_name": model_name},
     )
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
 
-    return rmsd
+    return vrmsd
 
 
-def calculate_simple_mean(model_list: list[object]) -> xr.Dataset:
+def calculate_simple_mean(
+    model_list: list[object], diag_text: bool = True
+) -> xr.Dataset:
     """
     Calculates the simple mean of a list of datasets. Returns a single xr.Dataset of the simple means.
 
-    Args:
+    Args
     ----------
-        - model_list (list[object]): A list of xr.Datasets.
+        model_list (list[object]): A list of xr.Datasets.
+        diag_text (bool, optional): Print diagnostic text.
 
-    Returns:
+    Returns
     ----------
-        - simple_mean (xr.Dataset): The simple mean of the list of datasets.
+        simple_mean (xr.Dataset): The simple mean of the list of datasets.
     """
-    print("Calculating simple mean of selected models...")
-    starttime = print_starttime()
+    if diag_text:
+        print("Calculating simple mean of selected models...")
+        starttime = print_starttime()
 
     datasets = [model.da_data for model in model_list]
     model_names = "_".join([dataset.attrs["model_name"] for dataset in datasets])
@@ -232,29 +324,31 @@ def calculate_simple_mean(model_list: list[object]) -> xr.Dataset:
     simple_mean.attrs["model_name"] = f"{model_names}_simple_mean"
     simple_mean.attrs["text_name"] = f"Simple Mean [{text_names}]"
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
-    print()
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
 
     return simple_mean
 
 
-def calculate_mean_diff(model_list: list[object]) -> xr.Dataset:
+def calculate_mean_diff(model_list: list[object], diag_text: bool = True) -> xr.Dataset:
     """
     Calculates the mean of the differences of each non-repeating pair of models from the passed list of datasets.
     Returns a single xr.Dataset of the mean differences.
 
-    Args:
+    Args
     ----------
-        - model_list (list[object]): A list of xr.Datasets.
+        model_list (list[object]): A list of xr.Datasets.
+        diag_text (bool, optional): Print diagnostic text.
 
-    Returns:
+    Returns
     ----------
-        - mean_diff (xr.Dataset): The mean difference of all selected models.
+        mean_diff (xr.Dataset): The mean difference of all selected models.
     """
-    print("Calculating mean difference of selected models...")
-    starttime = print_starttime()
+    if diag_text:
+        print("Calculating mean difference of selected models...")
+        starttime = print_starttime()
 
     datasets = [model.da_data for model in model_list]
     model_names = "_".join([dataset.attrs["model_name"] for dataset in datasets])
@@ -271,9 +365,124 @@ def calculate_mean_diff(model_list: list[object]) -> xr.Dataset:
     mean_diff.attrs["model_name"] = f"{model_names}_meandiff"
     mean_diff.attrs["text_name"] = f"Mean Difference [{text_names}]"
 
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
+
+    return mean_diff
+
+
+"""
+Section 3: Model Processing Functions
+"""
+
+
+def process_common_grid(
+    extent: tuple[float, float, float, float], depth: int
+) -> xr.Dataset:
+    """
+    Loads and subsets data from ESPC to act as a common grid for all models. In the event of a failure, CMEMS will be used as a common grid instead.
+
+    Args
+    ----------
+        extent (tuple[float, float, float, float]): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+        depth (int): The maximum depth in meters.
+
+    Returns
+    ----------
+        common_grid (xr.Dataset): Common grid data.
+    """
+    print("Setting up COMMON_GRID...")
+    starttime = print_starttime()
+
+    try:
+        temp = ESPC()
+        temp.load(diag_text=False)
+        temp.raw_data.attrs["text_name"] = "COMMON GRID"
+        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
+        today = dt.today().strftime("%Y-%m-%d")
+        temp.subset((today, today), extent, depth, diag_text=False)
+        common_grid = temp.subset_data
+    except Exception as e:
+        print(f"ERROR: Failed to process ESPC COMMON GRID data due to: {e}\n")
+        print("Processing CMEMS COMMON GRID instead...\n")
+        temp = CMEMS()
+        temp.load(diag_text=False)
+        temp.raw_data.attrs["text_name"] = "COMMON GRID"
+        temp.raw_data.attrs["model_name"] = "COMMON_GRID"
+        today = dt.today().strftime("%Y-%m-%d")
+        temp.subset((today, today), extent, depth, diag_text=False)
+        common_grid = temp.subset_data
+
     print("Done.")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
-    print()
 
-    return mean_diff
+    return common_grid
+
+
+def process_individual_model(
+    model: object,
+    common_grid: xr.Dataset,
+    dates: tuple[str, str],
+    extent: tuple[float, float, float, float],
+    depth: int,
+    single_date: bool,
+    pathfinding: bool,
+    waypoints: list[tuple[float, float]] = None,
+    glider_speed: float = None,
+    mission_name: str = None,
+) -> None:
+    """
+    Processes individual model data. Assigns regridded subset data,
+    1 meter interval interpolated data, & depth averaged to model class attributes.
+
+    Args
+    ----------
+        model (object): The model data.
+        common_grid (xr.Dataset): Common grid data.
+        dates (tuple[str, str]): A tuple of (date_min, date_max) in datetime format.
+        extent (tuple[float, float, float, float]): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+        depth (int): The maximum depth in meters.
+        single_date (bool): Boolean indicating whether to subset data to a single datetime.
+        pathfinding (dict): Dictionary of pathfinding parameters.
+    """
+    print(f"{model.name}: Queing calculations...")
+    starttime = print_starttime()
+
+    # subset
+    model.subset(dates, extent, depth, diag_text=False)
+    if single_date:
+        model.subset_data = model.subset_data.isel(time=0)
+    model.subset_data = regrid_ds(model.subset_data, common_grid, diag_text=False)
+
+    # interpolate depth
+    model.z_interpolated_data = interpolate_depth(model, depth, diag_text=False)
+    print("Persisting...", end="")
+    model.z_interpolated_data = model.z_interpolated_data.persist()
+    print("Done.")
+
+    # depth average
+    model.da_data = depth_average(model, diag_text=False)
+    model.da_data = calculate_magnitude(model, diag_text=False)
+    print("Computing...", end="")
+    model.da_data = model.da_data.compute()
+    print("Done.")
+
+    print("Processing Done.")
+    endtime = print_endtime()
+    print_runtime(starttime, endtime)
+
+    # pathfinding
+    if pathfinding:
+        model.waypoints = waypoints
+        model.optimal_path = compute_a_star_path(
+            waypoints,
+            model,
+            glider_speed,
+            mission_name,
+        )
+    else:
+        model.waypoints = None
+        model.optimal_path = None

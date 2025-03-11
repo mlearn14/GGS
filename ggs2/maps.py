@@ -3,6 +3,7 @@
 import cartopy.crs as ccrs
 import cmocean.cm as cmo
 import cool_maps.plot as cplt
+from matplotlib.colors import TwoSlopeNorm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
@@ -12,11 +13,11 @@ from matplotlib.colors import TwoSlopeNorm
 import datetime as dt
 import os
 
-from .functions import print_starttime, print_endtime, print_runtime
+from .util import print_starttime, print_endtime, print_runtime, save_fig
 
 
 ### Saving functions ###
-def generate_fig_filename(
+def generate_map_filename(
     mission_name: str,
     ddate: str,
     fdate: str,
@@ -58,26 +59,8 @@ def generate_fig_filename(
     return os.path.join(output_dir, filename)
 
 
-def save_fig(fig: object, filename: str, date: str) -> None:
-    """
-    Save a figure to a file.
-
-    Args:
-    ----------
-        - fig (object): The figure object to be saved.
-        - filename (str): The name of the file to save the figure to.
-
-    Returns:
-    ----------
-        - `None`
-    """
-    print(f"Saving figure to {filename}")
-    fig.savefig(filename, bbox_inches="tight", dpi=300)
-    print("Saved.")
-
-
 ### Plotting initialization ###
-def initialize_fig(
+def initialize_map(
     extent: tuple, figsize: tuple = (12, 8), projection: ccrs = ccrs.Mercator()
 ) -> tuple:
     """
@@ -110,7 +93,7 @@ def initialize_fig(
     return fig, ax
 
 
-def clear_fig(
+def clear_map(
     fig: object,
     total_flag: bool = False,
     im: object = None,
@@ -164,17 +147,17 @@ def add_text(
     """
     Adds text to figures.
 
-    Args:
+    Args
     ----------
-    - fig (object): Figure object
-    - ax (object): Axis object
-    - plot_title (str): Specific title for the plot.
-    - date (datetime): Date of data selection in MM-DD-YYYY HH:MM
-    - text_name (str): Properly formatted model name.
+        fig (object): Figure object
+        ax (object): Axis object
+        plot_title (str): Specific title for the plot.
+        date (datetime): Date of data selection in MM-DD-YYYY HH:MM
+        text_name (str): Properly formatted model name.
 
     Returns
     ---------
-    - `None`
+        - `None`
     """
     # Code adapted from Sal
     ax_pos = ax.get_position()
@@ -223,14 +206,14 @@ def create_cbar(fig: object, ax: object, im: object, label: str) -> object:
     """
     Creates a colorbar. Colorbar is placed to the right of the plot on its own dedicated ax.
 
-    Args:
+    Args
     -----------
         - fig (object): Figure object.
         - ax (object): Axis object.
         - im (object): Image object.
         - label (str): Label for colorbar.
 
-    Returns:
+    Returns
     -----------
         - cax (object): Colorbar object.
     """
@@ -242,6 +225,7 @@ def create_cbar(fig: object, ax: object, im: object, label: str) -> object:
             ax.get_position().height,
         ]
     )
+    plt.colorbar(im, cax=cax, format="%.2f", label=label)
     plt.colorbar(im, cax=cax, format="%.2f", label=label)
 
     # return the cax object instead of the colorbar object because matplotlib is weird and gets mad when I do cbar.remove()
@@ -484,40 +468,38 @@ def populate_map(
     data,
     density: int = 5,
     scalar: int = 4,
-    optimized_path: list = None,
+    optimal_path: list = None,
     waypoints: list = None,
     **kwargs,
 ) -> tuple:
     """
     Populates a figure with contours and/or vectors.
 
-    Arg:
+    Args
     -----------
-    - contour_type (str): Type of contour.
-        - Options: 'magnitude', 'threshold', 'speed_diff', 'mean_diff', 'rmsd', 'mean_magnitude', & 'mean_threshold'
-    - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
-        -  NOTE: RTOFS must be regridded prior to being passed to this function for quiver to work.
-    - fig (object): Figure object.
-    - ax (object): Axis object.
-    - data (Dataset): Data to be plotted.
-    - density (int): Density of streamlines. Defaults to 5.
-    - scalar (int): Scalar for subsampling data. Defaults to 4.
-    - optimized_path (list): List of optimized path.
-    - waypoints (list): List of waypoints.
+        contour_type (str): Type of contour. Options: 'magnitude', 'threshold', 'speed_diff', 'u_diff', 'v_diff', 'mean_diff', 'rmsd', 'mean_magnitude', & 'mean_threshold'
+        vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`). NOTE: RTOFS must be regridded prior to being passed to this function for quiver to work.
+        fig (object): Figure object.
+        ax (object): Axis object.
+        data (Dataset): Data to be plotted.
+        density (int): Density of streamlines. Defaults to 5.
+        scalar (int): Scalar for subsampling data. Defaults to 4.
+        optimal_path (list): List of optimal path.
+        waypoints (list): List of waypoints.
 
-    Returns:
+    Returns
     -----------
-    - contourf (object): Contourf object.
-    - legend (object): Legend object.
-    - cax (object): Colorbar object.
-    - quiver (object): Quiver object.
-    - streamplot (object): Streamplot object.
-    - path_plot (object): Optimized path plot object.
-    - waypoint_plot (object): Waypoint plot object.
+        contourf (object): Contourf object.
+        legend (object): Legend object.
+        cax (object): Colorbar object.
+        quiver (object): Quiver object.
+        streamplot (object): Streamplot object.
+        path_plot (object): Optimized path plot object.
+        waypoint_plot (object): Waypoint plot object.
 
     Other Parameters
     ----------
-    - **kwargs: Additional keyword arguments to pass to the plotting functions.
+        **kwargs: Additional keyword arguments to pass to the plotting functions.
     """
     contourf = None
     legend = None
@@ -544,6 +526,18 @@ def populate_map(
             cmap=cmo.speed,
         )
         cax = create_cbar(fig, ax, contourf, label)
+
+    elif contour_type == "threshold":
+        plot_title = "Depth Averaged Current Magnitude Thresholds"
+        levels, colors, legend = create_thresholds_levels_legend(ax, data.magnitude)
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.magnitude,
+            transform=ccrs.PlateCarree(),
+            levels=levels,
+            colors=colors,
+        )
 
     elif contour_type == "mean_diff":
         plot_title = "Depth Averaged Current Mean Differences"
@@ -589,8 +583,10 @@ def populate_map(
             colors=colors,
         )
 
-    elif contour_type == "rmsd_profile":
-        plot_title = "Depth Averaged Root Mean Square Differences (RMSD Profile)"
+    elif contour_type == "rmsd_vertical":
+        plot_title = (
+            "Depth Averaged Root Mean Square Vertical Differences (RMSD Vertical)"
+        )
         label = r"RMSD ($\mathregular{ms^{-1}}$)"
         levels = np.linspace(0, 0.9, 10)
 
@@ -611,9 +607,6 @@ def populate_map(
 
         min_mag = np.nanmin(data.magnitude.values)
         max_mag = np.nanmax(data.magnitude.values)
-
-        print(f"Minimum magnitude: {min_mag}")
-        print(f"Maximum magnitude: {max_mag}")
 
         # Case 1: If all values are negative, set vmin and vmax to match the negative range
         if max_mag <= 0:
@@ -637,6 +630,7 @@ def populate_map(
             data.magnitude,
             transform=ccrs.PlateCarree(),
             norm=norm,
+            norm=norm,
             levels=levels,
             extend="both",
             cmap=cmo.balance,
@@ -655,20 +649,98 @@ def populate_map(
             va="center",
         )
 
-    elif contour_type == "threshold":
-        plot_title = "Depth Averaged Current Thresholds"
-        levels, colors, legend = create_thresholds_levels_legend(ax, data.magnitude)
+    elif contour_type == "u_diff":
+        plot_title = "Depth Averaged Current Eastward Velocity Differences"
+        label = r"u Difference ($\mathregular{ms^{-1}}$)"
+
+        min_u = np.nanmin(data.u.values)
+        max_u = np.nanmax(data.u.values)
+
+        # Case 1: If all values are negative, set vmin and vmax to match the negative range
+        if max_u <= 0:
+            vmin, vmax = min_u, 1e-6
+
+        # Case 2: If all values are positive, set vmin and vmax to match the positive range
+        elif min_u >= 0:
+            vmin, vmax = -1e-6, max_u
+
+        # Case 3: Mixed positive and negative values (default behavior)
+        else:
+            max_abs_diff = max(abs(min_u), abs(max_u))
+            vmin, vmax = -max_abs_diff, max_abs_diff
+
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        levels = np.linspace(vmin, vmax, 11)
+
         contourf = ax.contourf(
             lon2D,
             lat2D,
-            data.magnitude,
+            data.u,
             transform=ccrs.PlateCarree(),
+            norm=norm,
             levels=levels,
-            colors=colors,
+            extend="both",
+            cmap=cmo.balance,
         )
-    else:
-        raise ValueError(
-            f"Invalid contour type: {contour_type}. Please choose 'magnitude', 'threshold', or 'rmsd'."
+
+        cax = create_cbar(fig, ax, contourf, label)
+        ax_pos = ax.get_position()
+        top = ax_pos.y1
+        eq_position = top + 0.05
+        fig.text(
+            0.5,
+            eq_position,
+            f"Eastward Difference = {data.attrs['model1_name']} - {data.attrs['model2_name']}",
+            fontsize=15,
+            ha="center",
+            va="center",
+        )
+
+    elif contour_type == "v_diff":
+        plot_title = "Depth Averaged Current Northward Velocity Differences"
+        label = r"v Difference ($\mathregular{ms^{-1}}$)"
+
+        min_v = np.nanmin(data.v.values)
+        max_v = np.nanmax(data.v.values)
+
+        # Case 1: If all values are negative, set vmin and vmax to match the negative range
+        if max_v <= 0:
+            vmin, vmax = min_v, 1e-6
+
+        # Case 2: If all values are positive, set vmin and vmax to match the positive range
+        elif min_v >= 0:
+            vmin, vmax = -1e-6, max_v
+
+        # Case 3: Mixed positive and negative values (default behavior)
+        else:
+            max_abs_diff = max(abs(min_v), abs(max_v))
+            vmin, vmax = -max_abs_diff, max_abs_diff
+
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        levels = np.linspace(vmin, vmax, 11)
+
+        contourf = ax.contourf(
+            lon2D,
+            lat2D,
+            data.v,
+            transform=ccrs.PlateCarree(),
+            norm=norm,
+            levels=levels,
+            extend="both",
+            cmap=cmo.balance,
+        )
+
+        cax = create_cbar(fig, ax, contourf, label)
+        ax_pos = ax.get_position()
+        top = ax_pos.y1
+        eq_position = top + 0.05
+        fig.text(
+            0.5,
+            eq_position,
+            f"Northward Difference = {data.attrs['model1_name']} - {data.attrs['model2_name']}",
+            fontsize=15,
+            ha="center",
+            va="center",
         )
 
     # Create vectors
@@ -686,8 +758,8 @@ def populate_map(
         )
 
     # Add optimized glider path
-    if optimized_path and waypoints is not None:
-        path_plot, wp_plot = create_glider_path(ax, optimized_path, waypoints)
+    if optimal_path and waypoints is not None:
+        path_plot, wp_plot = create_glider_path(ax, optimal_path, waypoints)
     else:
         path_plot = None
         wp_plot = None
@@ -707,10 +779,10 @@ def create_map(
     vector_type: str,
     density: int = 4,
     scalar: int = 4,
-    optimized_path: list = None,
+    optimal_path: list = None,
     waypoints: list = None,
     initialize: bool = True,
-    mission_name: str = None,
+    mission_fname: str = None,
     comp_plot: bool = False,
     save: bool = False,
     **kwargs,
@@ -718,36 +790,36 @@ def create_map(
     """
     Creates a map.
 
-    Args:
+    Args
     ----------
-    - data (Dataset): Data to be plotted.
-    - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-    - contour_type (str): Type of contour. Options are: 'magnitude', 'threshold', 'speed_diff', 'mean_diff', 'mean_magnitude', 'mean_threshold', & 'rmsd_profile'
-    - vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
-    - density (int): Density of streamlines. Defaults to 5.
-    - scalar (int): Scalar for subsampling data. Defaults to 4.
-    - optimized_path (list): List of optimized glider paths (e.g., [path1, path2, ...]).
-    - waypoints (list): List of waypoints (e.g., [waypoint1, waypoint2, ...]).
-    - initialize (bool): Determines if a new figure will be initialized. Defaults to False.
-    - mission_name (str): Name of the mission.
-    - comp_plot (bool): Determines if a comparison plot will be created. Defaults to False.
-    - save (bool): Determines if the figure will be saved to a file. Defaults to False. If set to True, figures will be saved to the /figures directory.
+        data (xr.Dataset): Data to be plotted.
+        extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+        contour_type (str): Type of contour. Options are: 'magnitude', 'threshold', 'speed_diff', 'u_diff', 'v_diff', 'mean_diff', 'mean_magnitude', 'mean_threshold', & 'rmsd_profile'
+        vector_type (str): Type of vector (e.g., 'quiver', 'streamplot', `None`).
+        density (int): Density of streamlines. Defaults to 5.
+        scalar (int): Scalar for subsampling data. Defaults to 4.
+        optimal_path (list): List of optimized glider paths (e.g., [path1, path2, ...]).
+        waypoints (list): List of waypoints (e.g., [waypoint1, waypoint2, ...]).
+        initialize (bool): Determines if a new figure will be initialized. Defaults to False.
+        mission_fname (str): Name of the mission formatted for the file download.
+        comp_plot (bool): Determines if a comparison plot will be created. Defaults to False.
+        save (bool): Determines if the figure will be saved to a file. Defaults to False. If set to True, figures will be saved to the /figures directory.
 
-    Returns:
+    Returns
     ----------
-    - fig (object): Figure object.
-    - ax (object): Axis object.
-    - contourf (object): Contourf object.
-    - legend (object): Legend object.
-    - cax (object): Colorbar object.
-    - quiver (object): Quiver object.
-    - streamplot (object): Streamplot object.
-    - path_plot (object): Optimized path plot object.
-    - waypoint_plot (object): Waypoint plot object.
+        fig (object): Figure object.
+        ax (object): Axis object.
+        contourf (object): Contourf object.
+        legend (object): Legend object.
+        cax (object): Colorbar object.
+        quiver (object): Quiver object.
+        streamplot (object): Streamplot object.
+        path_plot (object): Optimized path plot object.
+        waypoint_plot (object): Waypoint plot object.
 
-    Other Parameters:
+    Other Parameters
     ----------
-    - **kwargs: Additional keyword arguments to pass to the plotting functions.
+        **kwargs: Additional keyword arguments to pass to the plotting functions.
     """
     text_name = data.attrs["text_name"]
 
@@ -760,7 +832,7 @@ def create_map(
 
     if contour_type == "threshold":
         contour_text = "magnitude threshold"
-    elif contour_type == "rmsd_profile":
+    elif contour_type == "rmsd_verticle":
         contour_text = "RMS Difference"
     elif contour_type == "mean_diff":
         contour_text = "mean difference"
@@ -770,6 +842,10 @@ def create_map(
         contour_text = "simple mean magnitude threshold"
     elif contour_type == "speed_diff":
         contour_text = "speed difference"
+    elif contour_type == "u_diff":
+        contour_text = "eastward velocity difference"
+    elif contour_type == "v_diff":
+        contour_text = "northward velocity difference"
     else:
         contour_text = contour_type
 
@@ -779,7 +855,7 @@ def create_map(
     starttime = print_starttime()
 
     if initialize:
-        fig, ax = initialize_fig(extent)
+        fig, ax = initialize_map(extent)
     else:
         fig = plt.gcf()
         ax = fig.get_axes()[0]
@@ -792,7 +868,7 @@ def create_map(
         data,
         density=density,
         scalar=scalar,
-        optimized_path=optimized_path,
+        optimal_path=optimal_path,
         waypoints=waypoints,
         linewidth=0.5,
         **kwargs,
@@ -802,14 +878,19 @@ def create_map(
         model_name = data.attrs["model_name"]
         ddate = data.time.dt.strftime("%Y_%m_%d").values
         fdate = data.time.dt.strftime("%Y%m%d%H").values
-        filename = generate_fig_filename(
-            mission_name, ddate, fdate, contour_type, vector_type, model_name, comp_plot
+        filename = generate_map_filename(
+            mission_fname,
+            ddate,
+            fdate,
+            contour_type,
+            vector_type,
+            model_name,
+            comp_plot,
         )
         save_fig(fig, filename, fdate)
 
     print("Done.")
     endtime = print_endtime()
     print_runtime(starttime, endtime)
-    print()
 
     return fig, ax, contourf, legend, cax, quiver, streamplot, path_plot, wp_plot
