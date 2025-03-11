@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import xarray as xr
+from matplotlib.colors import TwoSlopeNorm
 
 import datetime as dt
 import os
@@ -224,6 +225,7 @@ def create_cbar(fig: object, ax: object, im: object, label: str) -> object:
             ax.get_position().height,
         ]
     )
+    plt.colorbar(im, cax=cax, format="%.2f", label=label)
     plt.colorbar(im, cax=cax, format="%.2f", label=label)
 
     # return the cax object instead of the colorbar object because matplotlib is weird and gets mad when I do cbar.remove()
@@ -601,6 +603,8 @@ def populate_map(
 
     elif contour_type == "speed_diff":
         plot_title = "Depth Averaged Current Speed Differences"
+    elif contour_type == "speed_diff":
+        plot_title = "Depth Averaged Current Speed Differences"
         label = r"Difference ($\mathregular{ms^{-1}}$)"
 
         min_mag = np.nanmin(data.magnitude.values)
@@ -627,6 +631,7 @@ def populate_map(
             lat2D,
             data.magnitude,
             transform=ccrs.PlateCarree(),
+            norm=norm,
             norm=norm,
             levels=levels,
             extend="both",

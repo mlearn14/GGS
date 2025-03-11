@@ -224,8 +224,8 @@ def calculate_simple_diff(
         starttime = print_starttime()
 
     simple_diff = data1 - data2
-    simple_diff.attrs["model_name"] = f"{model_name}_simple_diff"
-    simple_diff.attrs["text_name"] = f"Simple Difference [{text_name}]"
+    simple_diff.attrs["model_name"] = f"{model_name}_speed_diff"
+    simple_diff.attrs["text_name"] = f"Speed Difference [{text_name}]"
     simple_diff.attrs["model1_name"] = data1.attrs["text_name"]
     simple_diff.attrs["model2_name"] = data2.attrs["text_name"]
 

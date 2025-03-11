@@ -36,6 +36,12 @@ As of the current version, GGS2 utilizes .JSON configuration files:
 ## Configuration Files
 
 Configuration, or config, files are parameters for specific GGS2 runs that can be saved locally and shared. Utilizing the flexible .JSON file format, config files can be easily saved, read, and shared to allow for easily and rapidly reproducable products. By default, all config files are saved to `GGS/config`.
+1. `dataviz.ipynb`: Jupyter Notebook file. Parameters are set in the first code cell, or by setting `load_config` in the second cell to `True`, followed by the config filename sans suffix for `config_name`. The notebook can be ran by pressing the "double triangle"/"Run All" button located in the ribbon at the top of the screen. Users have the options to save their set parameters to a config .JSON file.
+2. `main.py`: Standard python file. Parameters are set in a config .JSON file before being parsed as an argument. Running the python script can be done by running `python main.py --config_name "config_fname"` in a Anaconda Powershell terminal when in the same working directory. `"config_fname"` should be replaced with the name of the config file you wish to use sans file suffix.
+
+## Configuration Files
+
+Configuration, or config, files are parameters for specific GGS2 runs that can be saved locally and shared. Utilizing the flexible .JSON file format, config files can be easily saved, read, and shared to allow for easily and rapidly reproducable products. By default, all config files are saved to `GGS/config`.
 
 ## Parameter Selection
 
