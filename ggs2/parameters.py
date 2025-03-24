@@ -177,6 +177,8 @@ def initialize_parameters(config: dict) -> dict:
     params["waypoints"] = [(wp[0], wp[1]) for wp in pathfinding_params["WAYPOINTS"]]
     params["glider_speed"] = pathfinding_params["GLIDER_RAW_SPEED"]
 
+    params["save_data"] = config["SAVE_DATA"]
+
     # plotting
     params["individual_plots"] = config["PLOTTING"]["INDIVIDUAL_PLOTS"]
     params["contours"] = parse_contours(config["PLOTTING"])
@@ -198,14 +200,13 @@ def ticket_report(params: dict) -> None:
         waypoints = ",\n\t   ".join([f"({y}°, {x}°)" for x, y in params["waypoints"]])
 
     contour_dict = {"magnitude": "Magnitude", "threshold": "Magnitude Threshold"}
-    vector_dict = {"quiver": "Quiver", "streamplot": "Streamplot"}
     comp_dict = {
         "speed_diff": "Speed Difference",
         "u_diff": "Eastward Difference (u)",
         "v_diff": "Northward Difference (v)",
         "mean_diff": "Mean Difference",
         "simple_mean": "Simple Mean",
-        "rmsd_profile": "RMS Profile Difference",
+        "rmsd_vertical": "RMS Vertical Difference",
     }
     ticket = {
         "Mission Name": params["mission_name"],
@@ -220,6 +221,7 @@ def ticket_report(params: dict) -> None:
         "Heuristic": params["heuristic"],
         "Waypoints": waypoints,
         "Glider Raw Speed": f"{params["glider_speed"]} m/s",
+        "Save Data": params["save_data"],
         "Individual Plots": params["individual_plots"],
         "Contours": ", ".join(contour_dict[plot] for plot in params["contours"]),
         "Vectors": params["vector_type"],
