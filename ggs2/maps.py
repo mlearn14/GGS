@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import xarray as xr
-from matplotlib.colors import TwoSlopeNorm
 
 import datetime as dt
 import os
@@ -326,7 +325,7 @@ def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
         marker="o",
         color="black",
         markersize=4,
-        transform=ccrs.PlateCarree(),
+        transform=ccrs.Geodetic(),
     )
 
     start_point = ax.scatter(
@@ -784,6 +783,7 @@ def create_map(
     mission_fname: str = None,
     comp_plot: bool = False,
     save: bool = False,
+    diag_text: bool = True,
     **kwargs,
 ) -> tuple:
     """
@@ -803,6 +803,7 @@ def create_map(
         mission_fname (str): Name of the mission formatted for the file download.
         comp_plot (bool): Determines if a comparison plot will be created. Defaults to False.
         save (bool): Determines if the figure will be saved to a file. Defaults to False. If set to True, figures will be saved to the /figures directory.
+        diag_text (bool): Determines if diagnostic text will be printed. Defaults to True.
 
     Returns
     ----------
@@ -848,10 +849,11 @@ def create_map(
     else:
         contour_text = contour_type
 
-    print(
-        f"{text_name}: Creating {vector_text} plot of depth averaged current {contour_text}s..."
-    )
-    starttime = print_starttime()
+    if diag_text:
+        print(
+            f"{text_name}: Creating {vector_text} plot of depth averaged current {contour_text}s..."
+        )
+        starttime = print_starttime()
 
     if initialize:
         fig, ax = initialize_map(extent)
@@ -886,10 +888,11 @@ def create_map(
             model_name,
             comp_plot,
         )
-        save_fig(fig, filename, fdate)
+        save_fig(fig, filename)
 
-    print("Done.")
-    endtime = print_endtime()
-    print_runtime(starttime, endtime)
+    if diag_text:
+        print("Done.")
+        endtime = print_endtime()
+        print_runtime(starttime, endtime)
 
     return fig, ax, contourf, legend, cax, quiver, streamplot, path_plot, wp_plot
