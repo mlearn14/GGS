@@ -1,6 +1,8 @@
 # author: matthew learn (matt.learn@marine.rutgers.edu)
 # This script contains general helper functions and individual model processing functions.
 
+import xarray as xr
+
 import datetime as dt
 from datetime import datetime
 import json
@@ -44,10 +46,10 @@ def logo_text() -> None:
               \////////////      \////////////       \///////////      \///////////////
 
                                     Glider Guidance System 2
-                                          Version 1.2.0
+                                          Version 1.2.1
                                     Created by Matthew Learn
 
-                      Need help? Send an email to matt.learn@marine.rutgers.edu
+                      Need help? Send an email to matthewalearn@gmail.com
         """
     )
 
@@ -135,7 +137,48 @@ def optimal_workers(power: float = 1.0) -> int:
     return num_workers
 
 
-def save_fig(fig: object, filename: str, date: str) -> None:
+def generate_data_filename(mission_name: str, fdate: str, fname: str):
+    """
+    Generate filename for the dataset.
+
+    Args
+    ----------
+        mission_name (str)
+            Name of the mission
+        fdate (str)
+            Date.
+        fname (str)
+            data.attrs["fname"]
+    """
+    return f"{mission_name}_{fdate}_{fname}.nc"
+
+
+def save_data(data: xr.Dataset, filename: str, ddate: str) -> None:
+    """
+    Save data to a netCDF file.
+
+    Args
+    ----------
+        data (xr.Dataset)
+            Model data object to be saved locally.
+        filename (str)
+            File name.
+        ddate (str)
+            Date formatted for directory.
+
+    Returns
+    ----------
+        `None`
+    """
+    dir = f"products/{ddate}/data"
+    os.makedirs(dir, exist_ok=True)
+    path = f"{dir}/{filename}"
+    print(f"Saving data to {path}...", end=" ")
+    data.to_netcdf(path)
+    print("Done.")
+
+
+def save_fig(fig: object, filename: str) -> None:
     """
     Save a figure to a file.
 
@@ -148,6 +191,6 @@ def save_fig(fig: object, filename: str, date: str) -> None:
     ----------
         - `None`
     """
-    print(f"Saving figure to {filename}")
+    print(f"Saving figure to {filename}", end=" ")
     fig.savefig(filename, bbox_inches="tight", dpi=300)
-    print("Saved.")
+    print("Done.")
