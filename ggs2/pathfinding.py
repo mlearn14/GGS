@@ -15,22 +15,28 @@ from .util import print_starttime, print_endtime, print_runtime
 def compute_a_star_path(
     waypoints_list: list[tuple],
     model: object,
+    heuristic: str,
     glider_raw_speed: float = 0.5,
     mission_name: str = None,
 ) -> list:
     """
     Calculates the optimal path between waypoints for a mission, considering the impact of ocean currents and distance.
 
-    Args:
+    Args
     ----------
-        - waypoints_list (list): A list of latitude and longitude tuples representing the waypoints.
+        waypoints_list (list)
+            A list of latitude and longitude tuples representing the waypoints.
             - List format: [(lat1, lon1), (lat2, lon2), ...]
-        - model (object): Model object.
-        - glider_raw_speed (float, optional): The glider's base speed in meters per second. Defaults to 0.5.
+        model (object)
+            Model object.
+        heuristic (str)
+            Heuristic to use for the A* algorithm. Options: "drift_aware", "haversine".
+        glider_raw_speed (float, optional)
+            The glider's base speed in meters per second. Defaults to 0.5.
 
-    Returns:
+    Returns
     ----------
-        - optimal_mission_path (list): A list of latitude and longitude tuples representing the optimal route.
+        optimal_mission_path (list): A list of latitude and longitude tuples representing the optimal route.
     """
     # Code adapted from Salvatore Fricano. Updated to match current code structure of GGS.
 
@@ -88,15 +94,15 @@ def compute_a_star_path(
         """
         Generates neighboring index nodes for exploration based on the current index's position.
 
-        Args:
+        Args
         -----------
-            - index (tuple): Current index node.
-            - lat_array (np.ndarray): 1D array of latitude values.
-            - lon_array (np.ndarray): 1D array of longitude values.
+            index (tuple): Current index node.
+            lat_array (np.ndarray): 1D array of latitude values.
+            lon_array (np.ndarray): 1D array of longitude values.
 
-        Yields:
+        Yields
         -----------
-            - neighbor (tuple): Neighboring index as a tuple (lat_idx2, lon_idx2).
+            neighbor (tuple): Neighboring index as a tuple (lat_idx2, lon_idx2).
         """
         # Unpack the current index into latitude and longitude indices
         lat_idx, lon_idx = index
@@ -246,26 +252,98 @@ def compute_a_star_path(
         goal_index: tuple,
         lat_array: np.ndarray,
         lon_array: np.ndarray,
+        heuristic: str,
     ) -> float:
         """Estimates the cost from the current index to the goal using the Haversine formula as a heuristic.
 
-        Args:
+        Args
         -----------
-            - inst_index (tuple): Tuple containing the instance latitude and longitude.
-            - goal_index (tuple): Tuple containing the goal latitude and longitude.
-            - lat_array (np.ndarray): 1D array of latitude values.
-            - lon_array (np.ndarray): 1D array of longitude values.
+            inst_index (tuple)
+                Tuple containing the instance latitude and longitude.
+            goal_index (tuple)
+                Tuple containing the goal latitude and longitude.
+            lat_array (np.ndarray)
+                1D array of latitude values.
+            lon_array (np.ndarray)
+                1D array of longitude values.
+            heuristic (str)
+                Heuristic to use for the A* algorithm. Options: "drift_aware", "haversine".
 
-        Returns:
+        Returns
         -----------
-            - heuristic_cost (float): Estimated cost from the current index to the goal.
+            heuristic_cost (float)
+                Estimated cost from the current index to the goal.
         """
         inst_lat, inst_lon = grid_to_coord(*inst_index, lat_array, lon_array)
         goal_lat, goal_lon = grid_to_coord(*goal_index, lat_array, lon_array)
 
-        heuristic_cost = haversine_distance(inst_lat, inst_lon, goal_lat, goal_lon)
+        if heuristic == "drift_aware":
+            return calculate_drift_aware_heuristic_cost(
+                inst_index, goal_index, lat_array, lon_array, ds, glider_raw_speed
+            )
+        elif heuristic == "haversine":
+            return haversine_distance(inst_lat, inst_lon, goal_lat, goal_lon)
+        else:
+            raise ValueError(
+                f"Unknown heuristic: {heuristic}. Supported heuristics: 'drift_aware', 'haversine'"
+            )
 
-        return heuristic_cost
+    def calculate_drift_aware_heuristic_cost(
+        inst_index: tuple,
+        goal_index: tuple,
+        lat_array: np.ndarray,
+        lon_array: np.ndarray,
+        ds: xr.Dataset,
+        glider_raw_speed: float,
+    ) -> float:
+        """
+        Estimates the cost from the current index to the goal, considering the benefit of ocean currents and accounting for drift.
+
+        Args
+        -----------
+            inst_index (tuple)
+                Tuple containing the instance latitude and longitude.
+            goal_index (tuple)
+                Tuple containing the goal latitude and longitude.
+            lat_array (np.ndarray)
+                1D array of latitude values.
+            lon_array (np.ndarray)
+                1D array of longitude values.
+            ds (xr.Dataset)
+                xarray dataset containing current data.
+            glider_raw_speed (float)
+                The glider's base speed in meters per second.
+
+        Returns
+        -----------
+            heuristic_cost (float)
+                Estimated cost from the current index to the goal.
+        """
+        inst_lat, inst_lon = grid_to_coord(*inst_index, lat_array, lon_array)
+        goal_lat, goal_lon = grid_to_coord(*goal_index, lat_array, lon_array)
+
+        # Compute direction vector to goal
+        direction_vector = np.array([goal_lon - inst_lon, goal_lat - inst_lat])
+        direction_norm = np.linalg.norm(direction_vector)
+        if direction_norm == 0:
+            return 0  # Already at the goal
+        direction_vector /= direction_norm
+
+        # Get ocean current velocity at the current location
+        u_inst = ds.u.isel(lat=inst_index[0], lon=inst_index[1]).values.item()
+        v_inst = ds.v.isel(lat=inst_index[0], lon=inst_index[1]).values.item()
+        current_vector = np.array([u_inst, v_inst])
+
+        # Compute effective velocity (glider speed + current drift)
+        effective_velocity = direction_vector * glider_raw_speed + current_vector
+        effective_speed = np.linalg.norm(effective_velocity)
+        effective_speed = max(effective_speed, 1e-6)  # Prevent division by zero
+
+        # Compute base heuristic (Haversine distance)
+        base_heuristic = haversine_distance(inst_lat, inst_lon, goal_lat, goal_lon)
+
+        # Adjust heuristic based on drift-aware effective velocity
+        return base_heuristic / effective_speed
 
     # Path reconstruction function
     def reconstruct_path(
@@ -280,17 +358,17 @@ def compute_a_star_path(
 
         The came_from dictionary is a mapping of each index to the index that it came from during the A* search. The path is reconstructed by starting from the goal index and tracing back through the came_from dictionary until the start index is reached.
 
-        Args:
+        Args
         -----------
-            - came_from_dict (dict): Dictionary containing the came_from information for each index.
-            - start_idx (tuple): Tuple containing the start latitude and longitude.
-            - goal_idx (tuple): Tuple containing the goal latitude and longitude.
-            - lat_array (np.ndarray): 1D array of latitude values.
-            - lon_array (np.ndarray): 1D array of longitude values.
+            came_from_dict (dict): Dictionary containing the came_from information for each index.
+            start_idx (tuple): Tuple containing the start latitude and longitude.
+            goal_idx (tuple): Tuple containing the goal latitude and longitude.
+            lat_array (np.ndarray): 1D array of latitude values.
+            lon_array (np.ndarray): 1D array of longitude values.
 
-        Returns:
+        Returns
         -----------
-            - optimal_path_coords (list): List of latitude and longitude tuples representing the optimal path from the start to the goal.
+            optimal_path_coords (list): List of latitude and longitude tuples representing the optimal path from the start to the goal.
         """
         optimal_path = [goal_idx]
 
@@ -318,30 +396,44 @@ def compute_a_star_path(
         end_idx: tuple,
         lat_array: np.ndarray,
         lon_array: np.ndarray,
+        heuristic: str,
         glider_raw_speed: float,
     ) -> tuple:
         """
         Applies the A* algorithm to find the optimal path between waypoints, considering ocean currents.
 
-        Args:
+        Args
         -----------
-            - ds (xr.Dataset): Dataset containing ocean current data.
-            - start_idx (tuple): Tuple containing the start latitude and longitude.
-            - end_idx (tuple): Tuple containing the goal latitude and longitude.
-            - lat_array (np.ndarray): 1D array of latitude values.
-            - lon_array (np.ndarray): 1D array of longitude values.
-            - glider_raw_speed (float): Raw speed of the glider.
+            ds (xr.Dataset)
+                Dataset containing ocean current data.
+            start_idx (tuple)
+                Tuple containing the start latitude and longitude.
+            end_idx (tuple)
+                Tuple containing the goal latitude and longitude.
+            lat_array (np.ndarray)
+                1D array of latitude values.
+            lon_array (np.ndarray)
+                1D array of longitude values.
+            heuristic (str)
+                Heuristic to use for the A* algorithm. Options: "drift_aware", "haversine".
+            glider_raw_speed (float)
+                Raw speed of the glider.
 
-        Returns:
+        Returns
         -----------
-            - path (list): List of latitude and longitude tuples representing the optimal path from the start to the goal.
-            - time (float): Time cost of the optimal path in seconds.
-            - distance (float): Distance cost of the optimal path in meters.
+            path (list)
+                List of latitude and longitude tuples representing the optimal path from the start to the goal.
+            time (float)
+                Time cost of the optimal path in seconds.
+            distance (float)
+                Distance cost of the optimal path in meters.
         """
         # Initialize the A* algorithm
         open_set = [
             (
-                calculate_heuristic_cost(start_idx, end_idx, lat_array, lon_array),
+                calculate_heuristic_cost(
+                    start_idx, end_idx, lat_array, lon_array, heuristic
+                ),
                 start_idx,
             )
         ]
@@ -349,7 +441,7 @@ def compute_a_star_path(
         g_score = {start_idx: 0}
         f_score = {
             start_idx: calculate_heuristic_cost(
-                start_idx, end_idx, lat_array, lon_array
+                start_idx, end_idx, lat_array, lon_array, heuristic
             )
         }
         path_found = False
@@ -374,17 +466,43 @@ def compute_a_star_path(
                     came_from[neighbor] = current
                     g_score[neighbor] = tent_g_score
                     f_score[neighbor] = tent_g_score + calculate_heuristic_cost(
-                        neighbor, end_idx, lat_array, lon_array
+                        neighbor, end_idx, lat_array, lon_array, heuristic
                     )
                     if neighbor not in [n for _, n in open_set]:
                         heapq.heappush(open_set, (f_score[neighbor], neighbor))
 
         if path_found:
             path = reconstruct_path(came_from, start_idx, end_idx, lat_array, lon_array)
-            time, distance = calculate_movement(
-                ds, start_idx, end_idx, lat_array, lon_array, glider_raw_speed
-            )
+            # new time and distance calculation. calculates a straight line between each point in the path
+            time = 0
+            distance = 0
+            for i in range(len(path)):
+                if i == 0:
+                    continue
+
+                path_start_idx = coord_to_grid(
+                    path[i - 1][0], path[i - 1][1], lat_array, lon_array
+                )
+                path_end_idx = coord_to_grid(
+                    path[i][0], path[i][1], lat_array, lon_array
+                )
+                segement_time, segment_distance = calculate_movement(
+                    ds,
+                    path_start_idx,
+                    path_end_idx,
+                    lat_array,
+                    lon_array,
+                    glider_raw_speed,
+                )
+                time += segement_time
+                distance += segment_distance
+
+            # old time and distance calculation. calculates a straight line between waypoints
+            # time, distance = calculate_movement(
+            #     ds, start_idx, end_idx, lat_array, lon_array, glider_raw_speed
+            # )
         else:
+            # if no optimal path is found, use the direct distance
             path, time, distance = direct_distance(
                 start_idx, end_idx, lat_array, lon_array, glider_raw_speed
             )
@@ -405,11 +523,6 @@ def compute_a_star_path(
 
     print(f"{text_name}: Calculating A* optimal path...")
     starttime = print_starttime()
-
-    # load the data. if chunked, the algorithm will run incredibly slow!
-    print("computing..")
-    ds = ds.compute()
-    print(ds)
 
     # Ensure the waypoints are float tuples
     waypoints_list = [(float(lat), float(lon)) for lat, lon in waypoints_list]
@@ -432,7 +545,7 @@ def compute_a_star_path(
 
         # Run the A* algorithm to get the optimal path, time, and distance for the current segment
         segment_path, segment_time, segment_distance = algorithm_a_star(
-            ds, start_idx, end_idx, lat_array, lon_array, glider_raw_speed
+            ds, start_idx, end_idx, lat_array, lon_array, heuristic, glider_raw_speed
         )
         # Extend the optimal mission path with the current segment path (excluding the last point)
         optimal_mission_path.extend(segment_path[:-1])
@@ -484,5 +597,4 @@ def compute_a_star_path(
 
 
 # TODO: Add a new algorithm for finding the optimal path.
-# TODO: Add different heuristic function to see if it makes a difference.
 # Might need to rework A* function to have helper functions be on the outside. We shall see.
