@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.2.0
+Last updated for v1.2.1
 
 ## Overview
 
@@ -55,6 +55,7 @@ Here is a list of all parameters and what they do:
 | RTOFS_WEST | bool | True - False | NOAA model for US west coast |
 | RTOFS_PARALLEL | bool | True - False | Experimental NOAA model for east coast |
 | COMPUTE_OPTIMAL_PATH | bool | True - False | Compute the optimal path using an A* algorithm |
+| HEURISTIC | str | "haversine" or "drift_aware" | Choice of A* heuristic. Haversine prioritizes distance, while drift aware takes into account ocean currents |
 | WAYPOINTS | list(tuple) | [(lat1, lon1), ..., (latx, lonx)] | List of coordinates to pass into the A* algorithm. Minimum of 2 points are required |
 | GLIDER_RAW_SPEED | float | 0.5 (recommended) | Raw speed of glider model |
 | INDIVIDUAL_PLOTS | bool | True - False | Make plots of individual model products |
@@ -69,7 +70,8 @@ Here is a list of all parameters and what they do:
 | VECTOR_TYPE | string | "quiver", "streamplot", None | Determines the vector type of the plot to show current direction |
 | STREAMLINE_DENSITY | int | --- | Density of streamlines. Higher number = denser streamlines |
 | QUIVER_DOWNSCALING | int | --- | Downsampling scalar for quiver plots. Higher number = Less quivers |
-| SAVE_FIGURES | bool | True - False | Save figures locally in the GGS/figures directory |
+| SAVE_DATA | bool | True - False | Save data locally as a NetCDF in GGS/products/YYYY_MM_DD/data |
+| SAVE_FIGURES | bool | True - False | Save figures locally in the GGS/products/YYYY_MM_DD directory. Comparison plots are saved in the /comparisons subdirectory |
 | save_config | bool | True - False | Save current options as a JSON file |
 | config_directory | str | "relative_path" | Directory that the config file will save to |
 | load_config | bool | True - False | Load locally stored config file |
