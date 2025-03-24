@@ -51,9 +51,11 @@ def main():
             parameters["depth"],
             parameters["single_date"],
             parameters["pathfinding"],
+            parameters["heuristic"],
             parameters["waypoints"],
             parameters["glider_speed"],
             parameters["mission_fname"],
+            parameters["save_data"],
         )
 
         # create map of depth averaged current data
