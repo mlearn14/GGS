@@ -65,6 +65,7 @@ class CMEMS:
 
         ds.attrs["text_name"] = "CMEMS"
         ds.attrs["model_name"] = "CMEMS"
+        ds.attrs["fname"] = "CMEMS_raw"
 
         self.raw_data = ds  # keeps the raw data just in case
 
@@ -108,6 +109,10 @@ class CMEMS:
         # subset the data using the xarray .sel selector
         self.subset_data = subset_data.sel(
             depth=slice(0, subset_data.depth.values[depth_idx])
+        )
+
+        self.subset_data.attrs["fname"] = (
+            f"{self.subset_data.attrs["model_name"]}_subset"
         )
 
         self.subset_data = self.subset_data.chunk("auto")
@@ -161,6 +166,7 @@ class ESPC:
 
         ds.attrs["text_name"] = "ESPC"
         ds.attrs["model_name"] = "ESPC"
+        ds.attrs["fname"] = "ESPC_raw"
 
         self.raw_data = ds
 
@@ -205,6 +211,10 @@ class ESPC:
         # subset the data using the xarray .sel selector
         self.subset_data = subset_data.sel(
             depth=slice(0, subset_data.depth.values[depth_idx])
+        )
+
+        self.subset_data.attrs["fname"] = (
+            f"{self.subset_data.attrs["model_name"]}_subset"
         )
 
         self.subset_data = self.subset_data.chunk("auto")
@@ -312,6 +322,7 @@ class RTOFS:
 
         # Add the filename as an attribute to the dataset
         ds.attrs["model_name"] = model_name
+        ds.attrs["fname"] = f"{model_name}_raw"
 
         # Store the dataset in the instance variable
         self.raw_data = ds
@@ -380,6 +391,10 @@ class RTOFS:
         # since we know the exact indexes we want to slice
         self.subset_data = self.subset_data.isel(
             x=slice(extent[0], extent[1]), y=slice(extent[2], extent[3])
+        )
+
+        self.subset_data.attrs["fname"] = (
+            f"{self.subset_data.attrs["model_name"]}_subset"
         )
 
         self.subset_data = self.subset_data.chunk("auto")
