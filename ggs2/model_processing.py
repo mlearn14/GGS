@@ -10,7 +10,13 @@ import datetime
 from datetime import datetime as dt
 import itertools
 
-from .util import print_starttime, print_endtime, print_runtime
+from .util import (
+    print_starttime,
+    print_endtime,
+    print_runtime,
+    generate_data_filename,
+    save_data,
+)
 from .models import CMEMS, ESPC
 from .pathfinding import *
 
@@ -36,6 +42,7 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
     """
     text_name = ds1.attrs["text_name"]
     model_name = ds1.attrs["model_name"]
+    fname = ds1.attrs["fname"]
 
     if diag_text:
         print(f"{text_name}: Regridding to {ds2.attrs['text_name']}...")
@@ -50,6 +57,7 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
     ds1_regridded = regridder(ds1)
     ds1_regridded.attrs["text_name"] = text_name
     ds1_regridded.attrs["model_name"] = model_name
+    ds1_regridded.attrs["fname"] = fname
 
     if diag_text:
         print("Done.")
@@ -100,6 +108,7 @@ def interpolate_depth(
 
     ds_interp.attrs["text_name"] = text_name
     ds_interp.attrs["model_name"] = model_name
+    ds_interp.attrs["fname"] = f"{model_name}_zinterp"
     ds_interp = ds_interp.chunk("auto")
 
     if diag_text:
@@ -132,10 +141,11 @@ def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
         print(f"{text_name}: Depth averaging...")
         starttime = print_starttime()
 
-    ds_da = ds.mean(dim="depth", keep_attrs=True)
+    ds_da = ds.mean(dim="depth", keep_attrs=False)
 
     ds_da.attrs["text_name"] = text_name
     ds_da.attrs["model_name"] = model_name
+    ds_da.attrs["fname"] = f"{model_name}_dac"
 
     if diag_text:
         print("Done.")
@@ -162,6 +172,7 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
 
     text_name = data.attrs["text_name"]
     model_name = data.attrs["model_name"]
+    fname = data.attrs["fname"]
 
     if diag_text:
         print(f"{text_name}: Calculating magnitude...")
@@ -170,9 +181,10 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
     # Calculate magnitude (derived from Pythagoras)
     magnitude = np.sqrt(data["u"] ** 2 + data["v"] ** 2)
 
-    magnitude.attrs["text_name"] = text_name
-    magnitude.attrs["model_name"] = model_name
     data = data.assign(magnitude=magnitude)
+    data.attrs["text_name"] = text_name
+    data.attrs["model_name"] = model_name
+    data.attrs["fname"] = fname
     data = data.chunk("auto")  # just to make sure
 
     if diag_text:
@@ -216,6 +228,7 @@ def calculate_simple_diff(
     text_name2: str = data2.attrs["text_name"]
     model_name1: str = data1.attrs["model_name"]
     model_name2: str = data2.attrs["model_name"]
+
     text_name = " & ".join([text_name1, text_name2])
     model_name = "+".join([model_name1, model_name2])
 
@@ -226,6 +239,7 @@ def calculate_simple_diff(
     simple_diff = data1 - data2
     simple_diff.attrs["model_name"] = f"{model_name}_speed_diff"
     simple_diff.attrs["text_name"] = f"Speed Difference [{text_name}]"
+    simple_diff.attrs["fname"] = simple_diff.attrs["model_name"]
     simple_diff.attrs["model1_name"] = data1.attrs["text_name"]
     simple_diff.attrs["model2_name"] = data2.attrs["text_name"]
 
@@ -265,6 +279,7 @@ def calculate_rms_vertical_diff(
     text_name2: str = data2.attrs["text_name"]
     model_name1: str = data1.attrs["model_name"]
     model_name2: str = data2.attrs["model_name"]
+
     text_name = " & ".join([text_name1, text_name2])
     model_name = "+".join([model_name1, model_name2])
 
@@ -285,7 +300,7 @@ def calculate_rms_vertical_diff(
 
     vrmsd = xr.Dataset(
         {"u": vrmsd_u, "v": vrmsd_v, "magnitude": vrmsd_mag},
-        attrs={"text_name": text_name, "model_name": model_name},
+        attrs={"text_name": text_name, "model_name": model_name, "fname": model_name},
     )
 
     if diag_text:
@@ -323,6 +338,7 @@ def calculate_simple_mean(
     simple_mean = combined_dataset.mean(dim="datasets")
     simple_mean.attrs["model_name"] = f"{model_names}_simple_mean"
     simple_mean.attrs["text_name"] = f"Simple Mean [{text_names}]"
+    simple_mean.attrs["fname"] = simple_mean.attrs["model_name"]
 
     if diag_text:
         print("Done.")
@@ -364,6 +380,7 @@ def calculate_mean_diff(model_list: list[object], diag_text: bool = True) -> xr.
     mean_diff = combined_ds.mean(dim="datasets")
     mean_diff.attrs["model_name"] = f"{model_names}_meandiff"
     mean_diff.attrs["text_name"] = f"Mean Difference [{text_names}]"
+    mean_diff.attrs["fname"] = mean_diff.attrs["model_name"]
 
     if diag_text:
         print("Done.")
@@ -434,9 +451,11 @@ def process_individual_model(
     depth: int,
     single_date: bool,
     pathfinding: bool,
+    heuristic: str,
     waypoints: list[tuple[float, float]] = None,
     glider_speed: float = None,
     mission_name: str = None,
+    save: bool = False,
 ) -> None:
     """
     Processes individual model data. Assigns regridded subset data,
@@ -451,8 +470,12 @@ def process_individual_model(
         depth (int): The maximum depth in meters.
         single_date (bool): Boolean indicating whether to subset data to a single datetime.
         pathfinding (dict): Dictionary of pathfinding parameters.
+        heuristic (str): Pathfinding heuristic. Options: "drift_aware", "haversine".
+        waypoints (list[tuple[float, float]]): List of waypoints for the A* computation.
+        mission_name (str): Name of the mission.
+        save (bool): Save each data to netCDF.
     """
-    print(f"{model.name}: Queing calculations...")
+    print(f"{model.name}: Processing data...")
     starttime = print_starttime()
 
     # subset
@@ -463,20 +486,27 @@ def process_individual_model(
 
     # interpolate depth
     model.z_interpolated_data = interpolate_depth(model, depth, diag_text=False)
-    print("Persisting:", end="")
-    sys.stdout.flush()  # make sure print statement is made
-    with ProgressBar():
+    with ProgressBar(minimum=1):
         model.z_interpolated_data = model.z_interpolated_data.persist()
-    # print("Done.")
 
     # depth average
     model.da_data = depth_average(model, diag_text=False)
     model.da_data = calculate_magnitude(model, diag_text=False)
-    print("Computing:", end="")
-    sys.stdout.flush()  # make sure print statement is made
-    with ProgressBar():
+    with ProgressBar(minimum=1):
+        # TODO: would it be faster for A* to be computed with it loaded?
         model.da_data = model.da_data.compute()
-    # print("Done.")
+
+    if save:
+        fdate = model.da_data.time.dt.strftime("%Y%m%d%H").values
+        ddate = model.da_data.time.dt.strftime("%Y_%m_%d").values
+        fname_zi = model.z_interpolated_data.attrs["fname"]
+        fname_da = model.da_data.attrs["fname"]
+
+        full_fname_zi = generate_data_filename(mission_name, fdate, fname_zi)
+        full_fname_da = generate_data_filename(mission_name, fdate, fname_da)
+
+        save_data(model.z_interpolated_data, full_fname_zi, ddate)
+        save_data(model.da_data, full_fname_da, ddate)
 
     print("Processing Done.")
     endtime = print_endtime()
@@ -488,6 +518,7 @@ def process_individual_model(
         model.optimal_path = compute_a_star_path(
             waypoints,
             model,
+            heuristic,
             glider_speed,
             mission_name,
         )
