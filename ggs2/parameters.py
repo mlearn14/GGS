@@ -26,11 +26,11 @@ def format_dates(dates: tuple) -> tuple:
             return today
         elif date.lower() == "tomorrow":
             tomorrow = today + dt.timedelta(days=1)
-            tomorrow = tomorrow.dt.strftime("%Y-%m-%d %H:%M:%S")
+            tomorrow = tomorrow.strftime("%Y-%m-%d %H:%M:%S")
             return tomorrow
         elif date.lower() == "yesterday":
             yesterday = today - dt.timedelta(days=1)
-            yesterday = yesterday.dt.strftime("%Y-%m-%d %H:%M:%S")
+            yesterday = yesterday.strftime("%Y-%m-%d %H:%M:%S")
             return yesterday
         else:
             return date
