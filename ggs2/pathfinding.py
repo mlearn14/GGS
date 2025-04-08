@@ -1,13 +1,14 @@
 # author: Salvatore Fricano
 # edited and implemented by Matthew Learn (matt.learn@marine.rutgers.edu)
 
-import numpy as np
-import xarray as xr
-
 import csv
 import heapq
 from math import radians, cos, sin, asin, sqrt
 import os
+
+import numpy as np
+import simplekml
+import xarray as xr
 
 from .util import print_starttime, print_endtime, print_runtime
 
@@ -16,7 +17,7 @@ def compute_a_star_path(
     waypoints_list: list[tuple],
     model: object,
     heuristic: str,
-    glider_raw_speed: float = 0.5,
+    glider_raw_speed: float,
     mission_name: str = None,
 ) -> list:
     """
@@ -32,7 +33,7 @@ def compute_a_star_path(
         heuristic (str)
             Heuristic to use for the A* algorithm. Options: "drift_aware", "haversine".
         glider_raw_speed (float, optional)
-            The glider's base speed in meters per second. Defaults to 0.5.
+            The glider's base horizontal speed in meters per second.
 
     Returns
     ----------
@@ -331,7 +332,7 @@ def compute_a_star_path(
         current_vector = np.array([u_inst, v_inst])
         current_mag = np.linalg.norm(current_vector)
 
-        if current_mag <= glider_raw_speed:
+        if current_mag <= 0.2:
             return base_heuristic
 
         # Compute direction vector to goal
@@ -523,6 +524,7 @@ def compute_a_star_path(
     fdate = ds.time.dt.strftime("%Y%m%d%H").values
 
     # Initialize a list to store the CSV data
+    path_csv_data = [("lat", "lon")]
     csv_data = [
         (
             "Date",
@@ -584,6 +586,9 @@ def compute_a_star_path(
     # Add the last waypoint to the optimal mission path
     optimal_mission_path.append(waypoints_list[-1])
 
+    for lat, lon in optimal_mission_path:
+        path_csv_data.append((lat, lon))
+
     # Print the total mission time (adjusted) and distance
     print(f"Total mission time (adjusted): {total_time/86400} days")
     print(f"Total mission distance: {total_distance/1000} kilometers")
@@ -591,6 +596,25 @@ def compute_a_star_path(
     # Ensure output directory exists
     dir = f"products/{ds.time.dt.strftime('%Y_%m_%d').values}/data"
     os.makedirs(dir, exist_ok=True)
+
+    # Define the path for the path CSV file
+    path_csv_file_path = os.path.join(
+        dir,
+        f"{mission_name}_{fdate}_{model_name}_mission_path.csv",
+    )
+    # Open the CSV file and write the data to it
+    with open(path_csv_file_path, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerows(path_csv_data)
+
+    # Save path again but as a KML file
+    kml_path = os.path.join(
+        dir, f"{mission_name}_{fdate}_{model_name}_mission_path.kml"
+    )
+    kml = simplekml.Kml()
+    optimal_path_formatted = [(lon, lat) for lat, lon in optimal_mission_path]
+    kml.newlinestring(name="Path", coords=optimal_path_formatted)
+    kml.save(kml_path)
 
     # Define the path for the CSV file
     csv_file_path = os.path.join(
