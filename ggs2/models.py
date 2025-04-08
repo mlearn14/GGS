@@ -75,7 +75,7 @@ class CMEMS:
             print_runtime(starttime, endtime)
 
     def subset(
-        self, dates: tuple, extent: tuple, depth: int = 1100, diag_text: bool = True
+        self, dates: tuple, extent: tuple, depth: int = 1000, diag_text: bool = True
     ) -> None:
         """
         Subsets the CMEMS dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
@@ -84,7 +84,7 @@ class CMEMS:
         ----------
             - dates (tuple): A tuple of (date_min, date_max) in datetime format.
             - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-            - depth (int, optional): The maximum depth in meters. Defaults to 1100. It is set to 1100 because CMEMS data does not have a layer at 1000 meters, so for interpolation to work, it has to have the next deepest layer.
+            - depth (int, optional): The maximum depth in meters. Defaults to 1000.
             - diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
         Returns:
@@ -181,16 +181,16 @@ class ESPC:
         """
         Subsets the ESPC dataset to the specified date, lon, lat, and depth bounds. Saves data to self.data attribute.
 
-        Args:
+        Args
         ----------
-            - dates (tuple): A tuple of (date_min, date_max) in datetime format.
-            - extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
-            - depth (int, optional): The maximum depth in meters. Defaults to 1000.
-            - diag_text (bool, optional): Print diagnostic text. Defaults to True.
+            dates (tuple): A tuple of (date_min, date_max) in datetime format.
+            extent (tuple): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
+            depth (int, optional): The maximum depth in meters. Defaults to 1000.
+            diag_text (bool, optional): Print diagnostic text. Defaults to True.
 
-        Returns:
+        Returns
         ----------
-            - `None`
+            `None`
         """
         # unpack the dates and extent tuples
         text_name = self.raw_data.attrs["text_name"]

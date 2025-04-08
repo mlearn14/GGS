@@ -322,25 +322,29 @@ def compute_a_star_path(
         inst_lat, inst_lon = grid_to_coord(*inst_index, lat_array, lon_array)
         goal_lat, goal_lon = grid_to_coord(*goal_index, lat_array, lon_array)
 
-        # Compute direction vector to goal
-        direction_vector = np.array([goal_lon - inst_lon, goal_lat - inst_lat])
-        direction_norm = np.linalg.norm(direction_vector)
-        if direction_norm == 0:
-            return 0  # Already at the goal
-        direction_vector /= direction_norm
+        # Compute base heuristic (Haversine distance)
+        base_heuristic = haversine_distance(inst_lat, inst_lon, goal_lat, goal_lon)
 
         # Get ocean current velocity at the current location
         u_inst = ds.u.isel(lat=inst_index[0], lon=inst_index[1]).values.item()
         v_inst = ds.v.isel(lat=inst_index[0], lon=inst_index[1]).values.item()
         current_vector = np.array([u_inst, v_inst])
+        current_mag = np.linalg.norm(current_vector)
+
+        if current_mag <= glider_raw_speed:
+            return base_heuristic
+
+        # Compute direction vector to goal
+        direction_vector = np.array([goal_lon - inst_lon, goal_lat - inst_lat])
+        direction_norm = np.linalg.norm(direction_vector)
+        if direction_norm == 0:
+            return 0  # Already at the goal
+        direction_vector /= direction_norm  # turns it into a unit vector
 
         # Compute effective velocity (glider speed + current drift)
         effective_velocity = direction_vector * glider_raw_speed + current_vector
         effective_speed = np.linalg.norm(effective_velocity)
         effective_speed = max(effective_speed, 1e-6)  # Prevent division by zero
-
-        # Compute base heuristic (Haversine distance)
-        base_heuristic = haversine_distance(inst_lat, inst_lon, goal_lat, goal_lon)
 
         # Adjust heuristic based on drift-aware effective velocity
         return base_heuristic / effective_speed
@@ -515,10 +519,18 @@ def compute_a_star_path(
     ds = model.da_data
     text_name = ds.attrs["text_name"]
     model_name = ds.attrs["model_name"]
+    ddate = ds.time.dt.strftime("%m-%d-%Y %H:%M").values
+    fdate = ds.time.dt.strftime("%Y%m%d%H").values
 
     # Initialize a list to store the CSV data
     csv_data = [
-        ("Segment Start", "Segment End", "Segment Time (s)", "Segment Distance (m)")
+        (
+            "Date",
+            "Segment Start",
+            "Segment End",
+            "Segment Time (s)",
+            "Segment Distance (m)",
+        )
     ]
 
     print(f"{text_name}: Calculating A* optimal path...")
@@ -557,6 +569,7 @@ def compute_a_star_path(
         # Append the current segment's data to the CSV list
         csv_data.append(
             (
+                ddate,
                 waypoints_list[i],
                 waypoints_list[i + 1],
                 segment_time,
@@ -565,15 +578,15 @@ def compute_a_star_path(
         )
         # Print a message to show the current segment's data
         print(
-            f"Segment {i+1}: Start {waypoints_list[i]} End {waypoints_list[i+1]} Time {segment_time} seconds Distance {segment_distance} meters"
+            f"Segment {i+1}: Start {waypoints_list[i]} End {waypoints_list[i+1]} Time {segment_time/86400} days Distance {segment_distance/1000} kilometers"
         )
 
     # Add the last waypoint to the optimal mission path
     optimal_mission_path.append(waypoints_list[-1])
 
     # Print the total mission time (adjusted) and distance
-    print(f"Total mission time (adjusted): {total_time} seconds")
-    print(f"Total mission distance: {total_distance} meters")
+    print(f"Total mission time (adjusted): {total_time/86400} days")
+    print(f"Total mission distance: {total_distance/1000} kilometers")
 
     # Ensure output directory exists
     dir = f"products/{ds.time.dt.strftime('%Y_%m_%d').values}/data"
@@ -582,7 +595,7 @@ def compute_a_star_path(
     # Define the path for the CSV file
     csv_file_path = os.path.join(
         dir,
-        f"{mission_name}_{ds.time.dt.strftime('%Y%m%d%H').values}_{model_name}_mission_statistics.csv",
+        f"{mission_name}_{fdate}_{model_name}_mission_statistics.csv",
     )
     # Open the CSV file and write the data to it
     with open(csv_file_path, "w", newline="") as file:

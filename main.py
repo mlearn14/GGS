@@ -29,7 +29,9 @@ def main():
     prm.ticket_report(parameters)
 
     # load common grid
-    common_grid = mp.process_common_grid(parameters["extent"], parameters["depth"])
+    common_grid = mp.process_common_grid(
+        parameters["dates"], parameters["extent"], parameters["depth"]
+    )
 
     # process and plot individual model data
     plot_params = {

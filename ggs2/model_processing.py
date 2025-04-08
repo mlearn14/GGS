@@ -6,7 +6,8 @@ import numpy as np
 import xarray as xr
 import xesmf as xe
 
-import datetime
+from dask.diagnostics import ProgressBar
+from datetime import date
 from datetime import datetime as dt
 import itertools
 
@@ -30,15 +31,16 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
     """
     Regrids the first dataset to the second dataset.
 
-    Args:
+    Args
     ----------
-        - ds1 (xr.Dataset): The first dataset. This is the dataset that will be regridded.
-        - ds2 (xr.Dataset): The second dataset. This is the dataset that the first dataset will be regridded to.
-        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
+        ds1 (xr.Dataset): The first dataset. This is the dataset that will be regridded.
+        ds2 (xr.Dataset): The second dataset. This is the dataset that the first dataset will be regridded to.
+        diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
-    Returns:
+    Returns
     ----------
-        - ds1_regridded (xr.Dataset): The first dataset regridded to the second dataset.
+        ds1_regridded (xr.Dataset)
+            The first dataset regridded to the second dataset.
     """
     text_name = ds1.attrs["text_name"]
     model_name = ds1.attrs["model_name"]
@@ -47,6 +49,8 @@ def regrid_ds(ds1: xr.Dataset, ds2: xr.Dataset, diag_text: bool = True) -> xr.Da
     if diag_text:
         print(f"{text_name}: Regridding to {ds2.attrs['text_name']}...")
         starttime = print_starttime()
+
+    # ds1 = ds1.drop_vars(["time"])
 
     # Code from Mike Smith.
     ds1_regridded = ds1.reindex_like(ds2, method="nearest")
@@ -396,13 +400,14 @@ Section 3: Model Processing Functions
 
 
 def process_common_grid(
-    extent: tuple[float, float, float, float], depth: int
+    dates: tuple[str, str], extent: tuple[float, float, float, float], depth: int
 ) -> xr.Dataset:
     """
     Loads and subsets data from ESPC to act as a common grid for all models. In the event of a failure, CMEMS will be used as a common grid instead.
 
     Args
     ----------
+        dates (tuple[str, str]): A tuple of (start_date, end_date).
         extent (tuple[float, float, float, float]): A tuple of (lat_min, lon_min, lat_max, lon_max) in decimel degrees.
         depth (int): The maximum depth in meters.
 
@@ -418,8 +423,10 @@ def process_common_grid(
         temp.load(diag_text=False)
         temp.raw_data.attrs["text_name"] = "COMMON GRID"
         temp.raw_data.attrs["model_name"] = "COMMON_GRID"
-        today = dt.today().strftime("%Y-%m-%d")
+        today = date.today()
         temp.subset((today, today), extent, depth, diag_text=False)
+        temp.subset_data["time"] = [np.datetime64(dates[0])]
+        temp.subset_data = temp.subset_data.isel(time=0)
         common_grid = temp.subset_data
     except Exception as e:
         print(f"ERROR: Failed to process ESPC COMMON GRID data due to: {e}\n")
@@ -428,8 +435,7 @@ def process_common_grid(
         temp.load(diag_text=False)
         temp.raw_data.attrs["text_name"] = "COMMON GRID"
         temp.raw_data.attrs["model_name"] = "COMMON_GRID"
-        today = dt.today().strftime("%Y-%m-%d")
-        temp.subset((today, today), extent, depth, diag_text=False)
+        temp.subset(dates, extent, depth, diag_text=False)
         common_grid = temp.subset_data
 
     print("Done.")
@@ -437,10 +443,6 @@ def process_common_grid(
     print_runtime(starttime, endtime)
 
     return common_grid
-
-
-from dask.diagnostics import ProgressBar
-import sys
 
 
 def process_individual_model(
@@ -480,8 +482,14 @@ def process_individual_model(
 
     # subset
     model.subset(dates, extent, depth, diag_text=False)
-    if single_date:
-        model.subset_data = model.subset_data.isel(time=0)
+
+    if "time" in model.subset_data.dims:
+        # Select first timestep, drop time as dimension
+        model.subset_data = model.subset_data.isel(time=0).drop_vars("time")
+        # Add as coordinate
+        model.subset_data = model.subset_data.assign_coords(
+            time=("time", [np.datetime64(dates[0])])
+        )
     model.subset_data = regrid_ds(model.subset_data, common_grid, diag_text=False)
 
     # interpolate depth
@@ -505,7 +513,7 @@ def process_individual_model(
         full_fname_zi = generate_data_filename(mission_name, fdate, fname_zi)
         full_fname_da = generate_data_filename(mission_name, fdate, fname_da)
 
-        save_data(model.z_interpolated_data, full_fname_zi, ddate)
+        # save_data(model.z_interpolated_data, full_fname_zi, ddate)
         save_data(model.da_data, full_fname_da, ddate)
 
     print("Processing Done.")

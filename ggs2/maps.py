@@ -86,6 +86,8 @@ def initialize_map(
         [lon_min, lon_max, lat_min, lat_max],
         gridlines=True,
         ax=ax,
+        oceancolor="none",
+        bathymetry=True,
         proj=projection,
     )
 
@@ -318,6 +320,17 @@ def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
     path_lats, path_lons = format_coords(path)
 
     # create plots of glider path, with waypoints plotted over in red
+    underline = ax.plot(
+        path_lons,
+        path_lats,
+        linestyle="-",
+        marker="o",
+        color="white",
+        markersize=8,
+        linewidth=6,
+        transform=ccrs.Geodetic(),
+    )
+
     path_plot = ax.plot(
         path_lons,
         path_lats,
