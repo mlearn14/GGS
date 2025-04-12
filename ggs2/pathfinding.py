@@ -332,8 +332,8 @@ def compute_a_star_path(
         current_vector = np.array([u_inst, v_inst])
         current_mag = np.linalg.norm(current_vector)
 
-        if current_mag <= 0.2:
-            return base_heuristic
+        if current_mag <= glider_raw_speed:
+            return base_heuristic / glider_raw_speed
 
         # Compute direction vector to goal
         direction_vector = np.array([goal_lon - inst_lon, goal_lat - inst_lat])
