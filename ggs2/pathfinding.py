@@ -226,8 +226,8 @@ def compute_a_star_path(
         heading_vector = heading_vector / norm
 
         # Get the current velocity at the start point
-        u_inst = ds.u.isel(lat=start_index[0], lon=start_index[1]).values.item()
-        v_inst = ds.v.isel(lat=start_index[0], lon=start_index[1]).values.item()
+        u_inst = ds.u.sel(lat=start_lat, lon=start_lon, method="nearest").values.item()
+        v_inst = ds.v.sel(lat=start_lat, lon=start_lon, method="nearest").values.item()
         inst_vector = np.array([u_inst, v_inst])
 
         # Calculate the current velocity along the heading vector
@@ -327,8 +327,15 @@ def compute_a_star_path(
         base_heuristic = haversine_distance(inst_lat, inst_lon, goal_lat, goal_lon)
 
         # Get ocean current velocity at the current location
-        u_inst = ds.u.isel(lat=inst_index[0], lon=inst_index[1]).values.item()
-        v_inst = ds.v.isel(lat=inst_index[0], lon=inst_index[1]).values.item()
+        u_inst = ds.u.sel(lat=inst_lat, lon=inst_lon, method="nearest").values.item()
+        v_inst = ds.v.sel(lat=inst_lat, lon=inst_lon, method="nearest").values.item()
+
+        if np.isnan(u_inst) or np.isnan(v_inst):
+            print(
+                f"[WARN] Ocean current is NaN at nearest point to ({inst_lat:.4f}, {inst_lon:.4f})"
+            )
+            return float("inf")
+
         current_vector = np.array([u_inst, v_inst])
         current_mag = np.linalg.norm(current_vector)
 
@@ -502,10 +509,6 @@ def compute_a_star_path(
                 time += segement_time
                 distance += segment_distance
 
-            # old time and distance calculation. calculates a straight line between waypoints
-            # time, distance = calculate_movement(
-            #     ds, start_idx, end_idx, lat_array, lon_array, glider_raw_speed
-            # )
         else:
             # if no optimal path is found, use the direct distance
             path, time, distance = direct_distance(
