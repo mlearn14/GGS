@@ -10,11 +10,23 @@
          \//\\\\\\\\\\\\/   \//\\\\\\\\\\\\/   \///\\\\\\\\\\\/     /\\\\\\\\\\\\\\\
            \////////////      \////////////       \///////////      \///////////////
 
-Last updated for v1.2.0
+Last updated for v1.2.2
 
 ## Overview
 
 This README will cover the installation of the Glider Guidance System 2 (GGS2) and all of its dependencies. For documentation on the use of the GGS2, refer to `_docs/GGS2_Tutorial.md`.
+
+### Program Description
+
+GGS2 loads ocean current model data into memory, subsets, regrid to a common grid, interpolated over depth to uniform one meter resolution intervals, and averaged over depth. The depth averaged data is fed into an A* search algorithm along with a set of waypoints to compute the most time-optimal path between waypoints, taking into accoun the impact of the depth averaged currents. Results are visualized as figures.
+
+### Data Description
+
+GGS2 utilizes ocean current forecast data from three ocean current models:
+
+- __Copernicus Marine Environmental Service (CMEMS)__ - Funded by the European Union and Mercator Ocean International. Uses the Global Ocean Physics Reanalysis (GLORYS) product.
+- __Earth System Prediction Capability (ESPC)__ - Based on 1/12° HYbrid Coordinates Ocean Model (HYCOM) unded by the United States Navy.
+- __Real-Time Ocean Forecast System (RTOFS)__ - Based on a 1/12° HYCOM and funded by the National Oceanic and Atmospheric Administration and the National Weather Service.
 
 ## Installation Requirements
 
@@ -24,7 +36,7 @@ This README will cover the installation of the Glider Guidance System 2 (GGS2) a
   - Python
   - Jupyter
 
-## Python Requirements
+### Python Requirements
 
 An environment that includes all requirements to run the GGS2 can be found by running `ggs2.yml` in any Anaconda powershell terminal through the following line: `conda env create -f ggs2.yml`.
 
@@ -40,5 +52,7 @@ If instead the user wishes to create their own environment manually, run `conda 
 - numpy
 - pandas
 - python
+- seaborn
+- simplekml
 - xarray
 - xesmf

@@ -1,6 +1,6 @@
 # Using the Glider Guidance System 2
 
-Last updated for v1.2.1
+Last updated for v1.2.2
 
 ## Overview
 
@@ -14,8 +14,8 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
 4. Individual model processing
     - Subset model to desired spatiotemporal bounds
     - Regrid dataset to the common grid for model comparison
-    - Interpolate data from the surface to desired maximum depth
-    - Calculate the depth average current velocity
+    - Interpolate data to uniform one meter resolution intervals from the surface to desired maximum depth
+    - Calculate the depth averaged current velocity
     - Calculate magnitude of currents from u and v components
     - Compute the optimal path using the A* algorithm
     - Plot depth averaged current velocity data
@@ -24,7 +24,8 @@ This document will cover how to properly run the Glider Guidance System 2 (GGS2)
     - Calculate and plot simple differences
     - Calculate and plot mean of simple differences
     - Calculate and plot simple mean
-    - Calculate and plot Root Mean Square (RMS) Profile Difference
+    - Calculate and plot Root Mean Square (RMS) Vertical Difference
+    - Mask simple difference data based on user defined agreement limits
 
 ## Running the GGS2
 
