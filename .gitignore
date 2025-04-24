@@ -6,6 +6,8 @@ test
 aph.py
 astar_processing.py
 astar_stats.ipynb
+0417totals.ipynb
+circumnavigation.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
