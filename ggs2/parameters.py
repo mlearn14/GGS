@@ -201,7 +201,7 @@ def ticket_report(params: dict) -> None:
 
     waypoints = params["waypoints"]
     if waypoints is not None:
-        waypoints = ",\n\t   ".join([f"({y}°, {x}°)" for x, y in params["waypoints"]])
+        waypoints = ",\n\t   ".join([f"({y}°, {x}°)" for y, x in params["waypoints"]])
 
     contour_dict = {"magnitude": "Magnitude", "threshold": "Magnitude Threshold"}
     comp_dict = {
