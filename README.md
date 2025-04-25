@@ -12,9 +12,10 @@
 
 Last updated for v1.2.2
 
-## Overview
+## Overview and Purpose
 
 This README will cover the installation of the Glider Guidance System 2 (GGS2) and all of its dependencies. For documentation on the use of the GGS2, refer to `_docs/GGS2_Tutorial.md`.
+GGS2 is a program inteded to assist in Slocum Glider flight planning by creating depth averaged current visualizations of various global ocean models. It additionally assists in flight planning by computing the time-optimal route between a set of user-defined waypoints.
 
 ### Program Description
 
