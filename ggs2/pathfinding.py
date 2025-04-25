@@ -36,7 +36,7 @@ def compute_a_star_path(
     heuristic: str,
     glider_raw_speed: float,
     mission_name: str = None,
-    heuristic_weight: float = 1.2,
+    heuristic_weight: float = 1.0,
 ) -> list:
     """
     Calculates the optimal path between waypoints for a mission, considering the impact of ocean currents and distance.
@@ -55,7 +55,7 @@ def compute_a_star_path(
         mission_name (str, optional)
             Name of the mission (default is None).
         heuristic_weight (float, optional)
-            Weight to apply to the heuristic cost in the A* algorithm. Default is 1.2.
+            Weight to apply to the heuristic cost in the A* algorithm. Default is 1.0.
 
     Returns
     ----------
@@ -494,7 +494,7 @@ def compute_a_star_path(
         lon_array: np.ndarray,
         glider_raw_speed: float,
         heuristic: str,
-        heuristic_weight: float = 1.2,
+        heuristic_weight: float = 1.0,
     ) -> tuple[list[tuple[float, float]], float, float, list[float], list[float]]:
         """
         A* pathfinding algorithm optimized for glider missions with ocean current-aware cost and heuristics.
@@ -511,7 +511,7 @@ def compute_a_star_path(
             lon_array (np.ndarray): 1D array of longitude values.
             glider_raw_speed (float): The glider's base speed in meters per second.
             heuristic (str): Heuristic to use for the A* algorithm. Options: "drift_aware", "haversine".
-            heuristic_weight (float): Weight to apply to the heuristic cost in the A* algorithm. Default is 1.2.
+            heuristic_weight (float): Weight to apply to the heuristic cost in the A* algorithm. Default is 1.0.
 
         Returns
         -----------
