@@ -298,6 +298,60 @@ def calculate_simple_diff(
     return simple_diff
 
 
+def calculate_percent_diff(
+    model1: object, model2: object, eps: float = 1e-6, diag_text: bool = True
+) -> xr.Dataset:
+    """
+    Compute the pointwise percent difference between two fields:
+        100 * |a - b| / ((|a| + |b|)/2 + eps)
+
+    Args
+    ----------
+        model1 (object): The first model.
+        model2 (object): The second model.
+        eps (float): epsilon, a small number to avoid division by zero. Defaults to 1e-6
+
+    Returns
+    ----------
+        percent_diff (xr.Dataset)
+            The percent difference
+    """
+    if diag_text:
+        print("Calculating percent difference...", end=" ")
+
+    data1: xr.Dataset = model1.da_data
+    data2: xr.Dataset = model2.da_data
+    model_list: list[xr.Dataset] = [data1, data2]
+    model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
+    data1 = model_list[0]
+    data2 = model_list[1]
+
+    text_name1: str = data1.attrs["text_name"]
+    text_name2: str = data2.attrs["text_name"]
+    model_name1: str = data1.attrs["model_name"]
+    model_name2: str = data2.attrs["model_name"]
+
+    text_name = " & ".join([text_name1, text_name2])
+    model_name = "+".join([model_name1, model_name2])
+
+    # Calculate percent difference
+    num = np.abs(data1 - data2)
+    denom = (np.abs(data1) + np.abs(data2)) / 2 + eps
+    perc_diff = 100 * num / denom
+
+    perc_diff.attrs["model_name"] = f"{model_name}_percent_diff"
+    perc_diff.attrs["text_name"] = f"Percent Difference [{text_name}]"
+    perc_diff.attrs["fname"] = perc_diff.attrs["model_name"]
+    # vvvvv not sure if this is going to do what I want it to
+    perc_diff.attrs["model1_name"] = text_name1
+    perc_diff.attrs["model2_name"] = text_name2
+
+    if diag_text:
+        print("Done.")
+
+    return perc_diff
+
+
 def calculate_rms_vertical_diff(
     model1: object, model2: object, regrid: bool = False, diag_text: bool = True
 ) -> xr.Dataset:
