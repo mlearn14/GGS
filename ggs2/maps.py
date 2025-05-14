@@ -92,7 +92,6 @@ def initialize_map(
         gridlines=True,
         ax=ax,
         oceancolor="none",
-        bathymetry=True,
         proj=projection,
     )
 
