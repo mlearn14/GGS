@@ -127,14 +127,15 @@ def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
     """
     Gets the depth integrated current velocities from the passed model data.
 
-    Args:
+    Args
     ----------
-        - model (object): The model data.
-        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
+        model (object): The model data.
+        diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
-    Returns:
+    Returns
     ----------
-        - ds_da (xr.Dataset): The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
+        ds_da (xr.Dataset): 
+            The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
     """
     ds = model.z_interpolated_data
 
@@ -163,14 +164,15 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
     """
     Calculates the magnitude of the model data.
 
-    Args:
+    Args
     ----------
-        - model (object): The model data.
-        - diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
+        model (object): The model data.
+        diag_text (bool, optional): Whether to print diagnostic text. Defaults to True.
 
-    Returns:
+    Returns
     ----------
-        - data_mag (xr.Dataset): The model data with a new variable 'magnitude'.
+        data_mag (xr.Dataset):
+            The model data with a new variable 'magnitude'.
     """
     data = model.da_data
 
@@ -195,6 +197,36 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
         print("Done.")
         endtime = print_endtime()
         print_runtime(starttime, endtime)
+
+    return data
+
+
+def calculate_heading(data: xr.Dataset, diag_text: bool = False) -> xr.Dataset:
+    """
+    Calculates the heading of the model data.
+
+    Args
+    ----------
+        data (xr.Dataset): The model data.
+        diag_text (bool, optional): Whether to print diagnostic text.
+
+    Returns
+    ----------
+        data (xr.Dataset) 
+            The model data with a new variable 'heading'.
+    """
+    if diag_text:
+        print("Calculating heading...", end=" ")
+
+    u = data.u
+    v = data.v
+
+    heading = (90 - np.degrees(np.arctan2(v, u))) % 360
+
+    data = data.assign(heading=heading)
+
+    if diag_text:
+        print("Done.")
 
     return data
 
@@ -240,12 +272,15 @@ def calculate_simple_diff(
         print(f"{text_name}: Calculating Simple Difference...")
         starttime = print_starttime()
 
+    speed_diff = np.abs(data1.magntiude - data2.magnitude)
+
     simple_diff = data1 - data2
     simple_diff.attrs["model_name"] = f"{model_name}_speed_diff"
-    simple_diff.attrs["text_name"] = f"Speed Difference [{text_name}]"
+    simple_diff.attrs["text_name"] = f"Simple Difference [{text_name}]"
     simple_diff.attrs["fname"] = simple_diff.attrs["model_name"]
-    simple_diff.attrs["model1_name"] = data1.attrs["text_name"]
-    simple_diff.attrs["model2_name"] = data2.attrs["text_name"]
+    # vvvvv not sure if this is going to do what I want it to
+    simple_diff.attrs["model1_name"] = text_name1
+    simple_diff.attrs["model2_name"] = text_name2
 
     if diag_text:
         print("Done.")
@@ -451,9 +486,9 @@ def process_individual_model(
     dates: tuple[str, str],
     extent: tuple[float, float, float, float],
     depth: int,
-    single_date: bool,
-    pathfinding: bool,
-    heuristic: str,
+    single_date: bool = True,
+    pathfinding: bool = False,
+    heuristic: str = None,
     waypoints: list[tuple[float, float]] = None,
     glider_speed: float = None,
     mission_name: str = None,
@@ -500,6 +535,7 @@ def process_individual_model(
     # depth average
     model.da_data = depth_average(model, diag_text=False)
     model.da_data = calculate_magnitude(model, diag_text=False)
+    model.da_data = calculate_heading(model, diag_text=False)
     with ProgressBar(minimum=1):
         # TODO: would it be faster for A* to be computed with it loaded?
         model.da_data = model.da_data.compute()
