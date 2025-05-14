@@ -134,7 +134,7 @@ def depth_average(model: object, diag_text: bool = True) -> xr.Dataset:
 
     Returns
     ----------
-        ds_da (xr.Dataset): 
+        ds_da (xr.Dataset):
             The depth averaged model data. Contains 'u', 'v', and 'magnitude' variables.
     """
     ds = model.z_interpolated_data
@@ -201,23 +201,24 @@ def calculate_magnitude(model: object, diag_text: bool = True) -> xr.Dataset:
     return data
 
 
-def calculate_heading(data: xr.Dataset, diag_text: bool = False) -> xr.Dataset:
+def calculate_heading(model: object, diag_text: bool = False) -> xr.Dataset:
     """
     Calculates the heading of the model data.
 
     Args
     ----------
-        data (xr.Dataset): The model data.
+        model (object): The model data object.
         diag_text (bool, optional): Whether to print diagnostic text.
 
     Returns
     ----------
-        data (xr.Dataset) 
+        data (xr.Dataset)
             The model data with a new variable 'heading'.
     """
     if diag_text:
         print("Calculating heading...", end=" ")
 
+    data = model.da_data
     u = data.u
     v = data.v
 
@@ -253,9 +254,9 @@ def calculate_simple_diff(
     ----------
         simple_diff (xr.Dataset): The simple difference between the two datasets.
     """
-    data1 = model1.da_data
-    data2 = model2.da_data
-    model_list = [data1, data2]
+    data1: xr.Dataset = model1.da_data
+    data2: xr.Dataset = model2.da_data
+    model_list: list[xr.Dataset] = [data1, data2]
     model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
     data1 = model_list[0]
     data2 = model_list[1]
@@ -272,9 +273,16 @@ def calculate_simple_diff(
         print(f"{text_name}: Calculating Simple Difference...")
         starttime = print_starttime()
 
-    speed_diff = np.abs(data1.magntiude - data2.magnitude)
+    # Calculate speed difference
+    speed_diff: xr.DataArray = np.abs(data1.magnitude - data2.magnitude)
 
-    simple_diff = data1 - data2
+    # Calculate heading difference
+    heading_diff = np.abs(data1.heading - data2.heading) % 360
+    heading_diff = np.minimum(heading_diff, 360 - heading_diff)
+
+    # Merge speed and heading differences
+    simple_diff = xr.merge([speed_diff, heading_diff])
+
     simple_diff.attrs["model_name"] = f"{model_name}_speed_diff"
     simple_diff.attrs["text_name"] = f"Simple Difference [{text_name}]"
     simple_diff.attrs["fname"] = simple_diff.attrs["model_name"]
