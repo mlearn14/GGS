@@ -7,12 +7,17 @@ from matplotlib.colors import TwoSlopeNorm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
+import seaborn as sns
 import xarray as xr
 
 import datetime as dt
 import os
 
 from .util import print_starttime, print_endtime, print_runtime, save_fig
+
+# Set Seaborn style
+sns.set_style("whitegrid")
+# sns.set_context("poster")
 
 
 ### Saving functions ###
