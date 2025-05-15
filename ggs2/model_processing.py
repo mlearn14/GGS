@@ -352,6 +352,65 @@ def calculate_percent_diff(
     return perc_diff
 
 
+def calculate_vector_diff(
+    model1: object, model2: object, eps: float = 1e-6, diag_text: bool = True
+) -> xr.DataArray:
+    """
+    Calculate the vector percent difference between two datasets. Accounts for both heading and speed differences.
+
+    Args
+    ----------
+        model1 (object): The first model.
+        model2 (object): The second model.
+        eps (float): epsilon, a small number to avoid division by zero. Defaults to 1e-6
+        diag_text (bool, optional): Whether to print diagnostic text.
+
+    Returns
+    ----------
+        vector_diff (xr.DataArray)
+            The vector difference
+    """
+    if diag_text:
+        print("Calculating vector difference...", end=" ")
+
+    data1: xr.Dataset = model1.da_data
+    data2: xr.Dataset = model2.da_data
+    model_list: list[xr.Dataset] = [data1, data2]
+    model_list.sort(key=lambda x: x.attrs["model_name"])  # sort datasets
+    data1 = model_list[0]
+    data2 = model_list[1]
+
+    text_name1: str = data1.attrs["text_name"]
+    text_name2: str = data2.attrs["text_name"]
+    model_name1: str = data1.attrs["model_name"]
+    model_name2: str = data2.attrs["model_name"]
+
+    text_name = " & ".join([text_name1, text_name2])
+    model_name = "+".join([model_name1, model_name2])
+
+    # Calculate vector percent difference
+    u1 = data1.u
+    v1 = data1.v
+    u2 = data2.u
+    v2 = data2.v
+    diff = np.sqrt((u1 - u2) ** 2 + (v1 - v2) ** 2)
+    mag1 = np.sqrt(u1**2 + v1**2)
+    mag2 = np.sqrt(u2**2 + v2**2)
+    mean_mag = (mag1 + mag2) / 2 + eps
+    vector_diff = 100 * diff / mean_mag
+
+    vector_diff.attrs["model_name"] = f"{model_name}_vector_diff"
+    vector_diff.attrs["text_name"] = f"Vector Difference [{text_name}]"
+    vector_diff.attrs["fname"] = vector_diff.attrs["model_name"]
+    vector_diff.attrs["model1_name"] = text_name1
+    vector_diff.attrs["model2_name"] = text_name2
+
+    if diag_text:
+        print("Done.")
+
+    return vector_diff
+
+
 def calculate_rms_vertical_diff(
     model1: object, model2: object, regrid: bool = False, diag_text: bool = True
 ) -> xr.Dataset:
