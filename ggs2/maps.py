@@ -335,6 +335,7 @@ def create_glider_path(ax: object, path: list, waypoints: list, color="k") -> tu
         markersize=8,
         linewidth=6,
         transform=ccrs.Geodetic(),
+        zorder=49,
     )
 
     path_plot = ax.plot(
@@ -345,6 +346,7 @@ def create_glider_path(ax: object, path: list, waypoints: list, color="k") -> tu
         color=color,
         markersize=4,
         transform=ccrs.Geodetic(),
+        zorder=50,
     )
 
     start_point = ax.scatter(
@@ -354,7 +356,7 @@ def create_glider_path(ax: object, path: list, waypoints: list, color="k") -> tu
         edgecolors="black",
         marker="o",
         transform=ccrs.PlateCarree(),
-        zorder=51,
+        zorder=52,
     )
     wp_plot = ax.scatter(
         wp_lons,
@@ -363,7 +365,7 @@ def create_glider_path(ax: object, path: list, waypoints: list, color="k") -> tu
         edgecolors="black",
         marker="o",
         transform=ccrs.PlateCarree(),
-        zorder=50,
+        zorder=51,
     )
     end_point = ax.scatter(
         wp_lons[-1],
@@ -372,7 +374,7 @@ def create_glider_path(ax: object, path: list, waypoints: list, color="k") -> tu
         edgecolors="black",
         marker="o",
         transform=ccrs.PlateCarree(),
-        zorder=51,
+        zorder=52,
     )
 
     return path_plot, wp_plot
