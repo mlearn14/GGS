@@ -286,7 +286,7 @@ def create_thresholds_levels_legend(ax: object, magnitude: xr.DataArray) -> tupl
     return levels, colors, legend
 
 
-def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
+def create_glider_path(ax: object, path: list, waypoints: list, color="k") -> tuple:
     """
     Creates a scatter plot of the glider path.
 
@@ -324,7 +324,7 @@ def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
     path_lats, path_lons = format_coords(path)
 
     # create plots of glider path, with waypoints plotted over in red
-    underline = ax.plot(
+    underlime = ax.plot(
         path_lons,
         path_lats,
         linestyle="-",
@@ -340,7 +340,7 @@ def create_glider_path(ax: object, path: list, waypoints: list) -> tuple:
         path_lats,
         linestyle="-",
         marker="o",
-        color="black",
+        color=color,
         markersize=4,
         transform=ccrs.Geodetic(),
     )
