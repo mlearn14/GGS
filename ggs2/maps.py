@@ -290,16 +290,18 @@ def create_glider_path(ax: object, path: list, waypoints: list, color="k") -> tu
     """
     Creates a scatter plot of the glider path.
 
-    Args:
+    Args
     -----------
-        - ax (object): Axis object.
-        - path (list): List of tuples of glider positions.
-        - waypoints (list): List of tuples of waypoints.
+        ax (object): Axis object.
+        path (list): List of tuples of glider positions.
+        waypoints (list): List of tuples of waypoints.
 
-    Returns:
+    Returns
     -----------
-        - path_plot (object): Path plot object.
-        - wp_plot (object): Waypoint plot object.
+        path_plot (object)
+            Path plot object.
+        wp_plot (object)
+            Waypoint plot object.
     """
 
     def format_coords(coords: list) -> tuple:
